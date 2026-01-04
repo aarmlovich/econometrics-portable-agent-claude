@@ -1,0 +1,296 @@
+---
+description: Core regression methods and diagnostics
+globs:
+  - "**/regression/**/*.py"
+  - "**/ols.py"
+---
+
+# Core Regression Methods
+
+## OLS Estimation
+
+### Default Settings
+- **Standard errors**: Use robust (HC1) standard errors by default
+- **Clustered SE**: When panel structure or clustering is relevant
+- Always report which type of standard errors were used
+
+### Implementation Requirements
+1. **Model specification** - Clear functional form
+   - Document all variables included
+   - Explain transformation (logs, interactions, polynomials)
+   - Report number of observations
+   - **Key metric**: Report observations per regressor (n/k ratio)
+   - **Survey weights**: If data comes from stratified or variable probability sampling, include weights parameter
+
+2. **Standard errors** - Always robust by default
+   - **HC1 (default)**: Stata's standard (`vce(robust)`), good for large samples
+     - Use when: ≥250 observations per regressor
+     - Most commonly used in practice
+   - **HC2**: Accounts for leverage points, good compromise
+     - Use when: Moderate samples or leverage points are a concern
+     - Preferred when: 100-250 observations per regressor
+   - **HC3 (jackknife)**: Preferred for small samples (MacKinnon and White 1985)
+     - Use when: <250 observations per regressor
+     - Best handles high leverage points
+     - More computationally expensive
+     - **Recommended for limited dependent variable models**: HC3 is preferred for linear probability models, binary response models, and other limited dependent variable contexts (Wooldridge practice)
+   - **Automatic selection**: Calculate n/k ratio and recommend HC variant
+     - n/k ≥ 250: HC1 (default)
+     - 100 ≤ n/k < 250: HC2 recommended
+     - n/k < 100: HC3 recommended
+   - **Clustered SE**: When panel structure or groups are relevant
+   - **Critical insight**: What matters is **observations per regressor (n/k)**, not absolute sample size
+   - Report SE type in output
+
+## Context-Appropriate Standard Error Selection
+
+**Wooldridge References:**
+- **Chapter 12**: Time Series Methods (HAC standard errors)
+- **Chapter 17**: Limited Dependent Variables (HC3 standard errors)
+- **Chapter 23**: Panel Data Methods (clustered standard errors with small-sample correction)
+- **Corpus Query**: Use `from src.corpus.agent_helpers import get_standard_error_guidance; get_standard_error_guidance("context")` for context-specific SE guidance
+- **Cross-Reference**: See WOOLDRIDGE_EVALUATION.md:121-140 for comparison with Hansen/Angrist on standard errors
+
+### Decision Framework
+
+Our agent uses a **robust default (HC1) with context-specific options** approach, synthesizing best practices from Hansen (modern practice), Angrist/MHE (identification focus), and Wooldridge (context-appropriate methods).
+
+**Default:** Robust (HC1) for most cross-sectional applications
+- Modern best practice (Hansen)
+- Good for large samples (≥250 observations per regressor)
+- Handles heteroskedasticity
+
+**Context-Specific Options:**
+- **HC3 (jackknife)**: For limited dependent variable models
+- **Clustered SE**: For panel data or grouped data
+- **HAC SE**: For time series data
+- **Homoskedastic**: Only for pedagogical examples (not recommended for production)
+
+### Specific Guidance by Context
+
+#### HC3 (Jackknife) - Limited Dependent Variables
+
+**When to use:**
+- Linear probability models (LPM)
+- Binary response models
+- Other limited dependent variable contexts
+- Small samples (<100 observations per regressor)
+- High leverage points present
+
+**Rationale:** Wooldridge consistently uses HC3 for limited dependent variable models (Chapter 17). HC3 (jackknife) provides better finite-sample properties for these models.
+
+**Wooldridge's Practice:**
+- Uses `cov_type='HC3'` for linear probability models and binary response models
+- Heiss companion code consistently uses HC3 for limited dependent variable contexts
+- **Corpus Query**: `get_wooldridge_perspective("HC3")` for Wooldridge's detailed guidance
+- **Cross-Reference**: WOOLDRIDGE_EVALUATION.md:312-316
+
+**Example contexts:**
+- Estimating probability models with binary outcomes
+- Models where the dependent variable is bounded (0-1, counts, etc.)
+
+#### Clustered SE - Panel Data or Grouped Data
+
+**When to use:**
+- Panel data (default in our agent for panel models)
+- School-level, state-level, or cluster-level data
+- Natural grouping structure in the data
+- When observations within groups are correlated
+
+**Rationale:** All three traditions (Hansen, Angrist, Wooldridge) agree on clustering when appropriate. Clustered SE accounts for within-cluster correlation and provides valid inference.
+
+**Example contexts:**
+- Students within schools
+- Individuals within states
+- Firms within industries
+- Panel data with entity or time clustering
+
+#### HAC (Heteroskedasticity and Autocorrelation Consistent) - Time Series
+
+**When to use:**
+- Time series data
+- When observations are time-ordered
+- When both heteroskedasticity and autocorrelation are concerns
+
+**Rationale:** Wooldridge uses HAC SE for time series models (Chapter 12). HAC SE accounts for both heteroskedasticity and autocorrelation in time-ordered data.
+
+**Wooldridge's Practice:**
+- Uses `cov_type='HAC', cov_kwds={'maxlags': 2}` for time series models
+- Example from Heiss companion code: `results_hac = reg.fit(cov_type='HAC', cov_kwds={'maxlags': 2})`
+- **Corpus Query**: `get_wooldridge_perspective("HAC standard errors")` for Wooldridge's detailed guidance
+- **Cross-Reference**: WOOLDRIDGE_EVALUATION.md:325-329
+
+**Example contexts:**
+- Annual, quarterly, or monthly time series
+- Data with temporal ordering
+- When lagged values may be correlated
+
+#### Robust (HC1) - Default for Cross-Sectional Data
+
+**When to use:**
+- Cross-sectional data (default)
+- Large samples (≥250 observations per regressor)
+- When heteroskedasticity is a concern but clustering is not
+
+**Rationale:** Hansen's modern practice. Robust SE (HC1) is the default for most applications, providing protection against heteroskedasticity without requiring specific assumptions about the error structure.
+
+**Example contexts:**
+- Standard cross-sectional regressions
+- Large-sample applications
+- When no natural grouping or time structure exists
+
+### Synthesis Note
+
+**Our Approach:**
+- **Robust default (Hansen)**: Modern best practice for most applications
+- **Context-specific options (Wooldridge)**: HC3 for LDV, clustered for panels, HAC for time series
+- **Identification focus (Angrist)**: Methods serve identification strategy
+
+**Validation:**
+- All three traditions (Hansen, Angrist/MHE, Wooldridge) validate this approach
+- High confidence in methodological choices through triangulation
+- Synthesis ensures both methodological rigor and practical relevance
+
+3. **Coefficient interpretation** - Clear and accurate
+   - Level-level: "A one-unit increase in X..."
+   - Log-level: "A one-unit increase in X is associated with a β% change in Y"
+   - Log-log: "A 1% increase in X is associated with a β% change in Y"
+
+### Example Output
+```python
+# Always report:
+# - Coefficient estimates
+# - Standard errors (type: robust/clustered)
+# - P-values or confidence intervals
+# - Sample size (N)
+# - R-squared
+```
+
+## Diagnostic Checks
+
+### Linearity
+- **Test**: Residuals vs. fitted values plot
+- **Check**: No clear patterns or curvature
+- **If violated**: Consider polynomial terms or transformations
+
+### Homoskedasticity
+- **Test**: Breusch-Pagan test, White test
+- **Solution**: Use robust standard errors (default)
+- Report test statistic and p-value
+
+### Normality of Residuals
+- **Test**: Jarque-Bera, Shapiro-Wilk, Q-Q plot
+- **Note**: Less critical with large samples (CLT applies)
+- **Visual**: Q-Q plot of residuals
+
+### Outlier Detection
+- **Methods**: 
+  - Studentized residuals (|residual| > 3)
+  - Leverage (hat values, h_ii)
+  - Cook's distance
+- **Leverage points**:
+  - Mean leverage = k/n (regressors/observations)
+  - High leverage: > 2*(k/n) or close to 1
+  - Leverage close to 1: Observation completely determines regression plane
+  - High leverage points: Consider HC2 or HC3 instead of HC1
+  - Report maximum leverage and mean leverage
+- **Action**: Report outliers but don't automatically remove
+  - Investigate if data errors
+  - Consider robustness checks excluding outliers
+  - If high leverage points present: Use HC2 or HC3 standard errors
+
+### Multicollinearity
+- **Test**: Variance Inflation Factor (VIF)
+  - VIF > 10 indicates concern
+  - VIF > 5 suggests moderate correlation
+- **Solution**: Remove one variable if truly redundant
+- Report VIF for all variables
+
+## Residual Analysis
+Always produce:
+1. **Residual vs. fitted plot** - Check for patterns
+2. **Q-Q plot** - Check normality
+3. **Scale-location plot** - Check homoskedasticity
+4. **Leverage plot** - Identify influential observations
+
+## Model Specification
+- Start with simple model, add complexity
+- Test nested models with F-test or likelihood ratio test
+- Report model selection criteria (AIC, BIC) if comparing non-nested models
+- Document all specification decisions
+
+## Goodness of Fit
+- **R-squared**: Report but don't over-emphasize
+- **Adjusted R-squared**: For model comparison with different # of variables
+- **F-statistic**: Test of joint significance of all regressors
+- **Log-likelihood**: For model comparison
+
+## Survey Weights in OLS
+
+**Wooldridge Reference: Chapter 20 - Stratified Sampling and Cluster Sampling**
+
+Wooldridge provides comprehensive guidance on survey weights, including when to use weighted estimators and how to implement them. Our approach follows Wooldridge's methodology for handling stratified and variable probability sampling.
+
+**Corpus Query**: `get_wooldridge_perspective("survey weights")` or `semantic_search_wooldridge("stratified sampling weighted estimators")` for Wooldridge's detailed guidance.
+
+**Cross-Reference**: See WOOLDRIDGE_EVALUATION.md:1450-1470 for detailed methodology extraction from Chapter 20.
+
+### When to Use Weights
+- **Stratified sampling**: When different population groups are sampled with different frequencies
+- **Variable probability sampling**: When observations are kept with varying probabilities based on strata
+- **Oversampling**: When certain groups are intentionally overrepresented
+- **Complex survey designs**: Multi-stage sampling with stratification
+
+### Weight Implementation
+- Use `weights` parameter in OLS estimation (e.g., `statsmodels.OLS.from_formula(..., weights=weights)`)
+- Weights are inverse sampling probabilities: `weight_i = 1 / P(observation i is in sample)`
+- Weighted estimator minimizes: `Σ_i (weight_i * (y_i - X_i'β)²)`
+- Report whether weighted or unweighted estimates are used
+- Compare weighted vs. unweighted estimates when relevant (show both if weights matter)
+
+### Weight Validation
+- Validate weights are positive and non-zero before estimation
+- Report weight statistics (min, max, mean, median)
+- Document weight source and what they represent
+
+Example:
+```python
+# OLS with survey weights
+import statsmodels.api as sm
+
+# Validate weights
+assert (weights > 0).all(), "All weights must be positive"
+
+# Weighted OLS
+model = sm.WLS(y, X, weights=weights)
+results = model.fit(cov_type='HC1')  # Use robust SE with weights
+
+# Report weighted vs unweighted
+unweighted_model = sm.OLS(y, X).fit(cov_type='HC1')
+print("Weighted estimate:", results.params['x'])
+print("Unweighted estimate:", unweighted_model.params['x'])
+```
+
+## Reporting Standards
+Every regression should report:
+1. Sample size (N)
+2. Coefficient estimates
+3. Standard errors (type specified)
+4. Significance levels (*, **, *** or p-values)
+5. R-squared (and adjusted R-squared)
+6. F-statistic
+7. Diagnostic test results (if any violations)
+8. **Survey weights**: Whether weights were used and why (if applicable)
+
+Example table format:
+```
+                    Coefficient    Std Error    P-value
+Intercept            X.XXX         (X.XXX)      X.XXX
+Variable 1           X.XXX         (X.XXX)      X.XXX**
+Variable 2           X.XXX         (X.XXX)      X.XXX***
+
+N = XXX
+R-squared = X.XXX
+Robust standard errors in parentheses
+*** p<0.01, ** p<0.05, * p<0.1
+```

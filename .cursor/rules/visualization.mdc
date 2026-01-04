@@ -1,0 +1,160 @@
+---
+description: Visualization standards for publication-quality figures
+globs:
+  - "**/visualizations.py"
+  - "**/diagnostics/visualizations.py"
+---
+
+# Visualization Standards
+
+## General Principles
+- **Publication-quality** - All figures should be suitable for academic papers
+- **Clear and readable** - Labels, legends, annotations must be legible
+- **Colorblind-friendly** - Use palettes accessible to colorblind viewers
+- **Reproducible** - Code should generate identical figures
+
+## Figure Specifications
+
+### Resolution and Format
+- **DPI**: Minimum 300 DPI for publication (150 DPI for presentations)
+- **Format**: Export in multiple formats:
+  - PNG (for presentations, web)
+  - PDF (for publications, vector graphics)
+  - SVG (for web, scalable)
+
+### Size
+- **Width**: Typically 6-7 inches for single column, 12-14 for double
+- **Aspect ratio**: 4:3 or 16:9 for presentations, flexible for papers
+- **Font size**: Minimum 10pt, typically 12pt for labels
+
+### Color Palettes
+- **Default**: Use colorblind-friendly palettes
+  - Seaborn default palette
+  - ColorBrewer palettes (accessible)
+  - Avoid red-green combinations
+- **Test**: Use colorblind simulators to verify accessibility
+
+## Common Plot Types
+
+### Regression Diagnostics
+1. **Residuals vs. Fitted**
+   - X-axis: Fitted values
+   - Y-axis: Residuals
+   - Add horizontal line at y=0
+   - Check for patterns/heteroskedasticity
+
+2. **Q-Q Plot**
+   - Compare residual quantiles to normal quantiles
+   - Add diagonal reference line
+   - Check for normality
+
+3. **Scale-Location Plot**
+   - X-axis: Fitted values
+   - Y-axis: √|Standardized residuals|
+   - Check for heteroskedasticity
+
+### Causal Inference Plots
+
+#### Difference-in-Differences
+- **Parallel Trends Plot**:
+  - X-axis: Time periods
+  - Y-axis: Mean outcome
+  - Lines: Treated and control groups
+  - Vertical line: Treatment start
+  - Confidence intervals/bands
+
+- **Event Study Plot**:
+  - X-axis: Leads and lags relative to treatment
+  - Y-axis: Coefficient estimates
+  - Horizontal line: Zero effect
+  - Confidence intervals
+  - Pre-period should show null effects
+
+#### Regression Discontinuity
+- **RD Plot**:
+  - X-axis: Running variable
+  - Y-axis: Outcome variable
+  - Vertical line: Cutoff
+  - Binned averages with confidence intervals
+  - Fitted lines on both sides of cutoff
+  - Different colors for treated/control
+
+- **Density Plot** (manipulation test):
+  - X-axis: Running variable
+  - Y-axis: Density
+  - Vertical line: Cutoff
+  - Check for bunching
+
+### Panel Data Plots
+- **Time series by group**: Multiple lines for different units
+- **Distribution plots**: Before/after comparisons
+- **Coefficient plots**: With confidence intervals
+
+## Plot Elements
+
+### Labels and Titles
+- **X-axis label**: Clear variable name with units if applicable
+- **Y-axis label**: Clear variable name with units
+- **Title**: Descriptive but concise (optional in papers)
+- **Legend**: Clear labels, positioned appropriately
+
+### Annotations
+- **Confidence intervals**: Shaded regions or error bars
+- **Reference lines**: Zero lines, cutoffs, treatment dates
+- **Text annotations**: Important values, test statistics
+
+### Grid and Style
+- **Grid**: Light gray, helps readability
+- **Style**: Use seaborn or matplotlib styles (e.g., `seaborn-v0_8`)
+- **Spines**: Clean appearance (remove top/right spines if preferred)
+
+## Code Standards
+
+### Function Structure
+All plotting functions should:
+- Accept data and parameters
+- Return figure/axes objects
+- Allow customization (colors, labels, etc.)
+- Save figures if path provided
+
+Example:
+```python
+def plot_parallel_trends(
+    data: pd.DataFrame,
+    outcome: str,
+    time: str,
+    treatment: str,
+    treatment_date: str,
+    save_path: Optional[str] = None,
+    figsize: Tuple[int, int] = (10, 6)
+) -> plt.Figure:
+    """Plot parallel trends for DiD analysis."""
+    fig, ax = plt.subplots(figsize=figsize)
+    # ... plotting code ...
+    if save_path:
+        fig.savefig(save_path, dpi=300, bbox_inches='tight')
+    return fig
+```
+
+### Matplotlib/Seaborn Usage
+- Use seaborn for statistical plots (default styling)
+- Use matplotlib for custom plots
+- Set style at beginning: `plt.style.use('seaborn-v0_8')`
+- Use context manager for temporary style changes
+
+## Export Functions
+Create utility functions for saving figures:
+```python
+def save_figure(fig: plt.Figure, path: str, formats: List[str] = ['png', 'pdf']):
+    """Save figure in multiple formats."""
+    base_path = Path(path).stem
+    for fmt in formats:
+        fig.savefig(f'{base_path}.{fmt}', dpi=300, bbox_inches='tight')
+```
+
+## Best Practices
+1. **Always include confidence intervals** when showing estimates
+2. **Use consistent styling** across all figures in a project
+3. **Test readability** - Print at intended size to verify
+4. **Document data** - Note sample size, estimation method in caption
+5. **Version control** - Save figure code with data for reproducibility

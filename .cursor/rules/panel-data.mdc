@@ -1,0 +1,348 @@
+---
+description: Rules for panel data methods - Priority #2
+globs:
+  - "**/panel/**/*.py"
+  - "**/fixed_effects.py"
+  - "**/random_effects.py"
+  - "**/panel_iv.py"
+---
+
+# Panel Data Methods (Priority #2)
+
+## General Principles
+- **Specify panel structure** - Clearly identify unit and time dimensions
+- **Handle missing data** - Document unbalanced panel structure
+- **Standard errors** - Always consider clustering (unit-level, time-level, or two-way)
+- **Test model assumptions** - Serial correlation, heteroskedasticity, cross-sectional dependence
+- **Survey weights** - If panel data comes from stratified sampling, include weights parameter
+
+**Methodological Foundation:** Our panel data methods synthesize best practices from:
+- **Panel expertise (Wooldridge)**: Comprehensive panel data methods, understanding of mechanics (within transformation), small-sample corrections
+- **Modern practices (Hansen)**: Robust standard errors, explicit diagnostic requirements
+- **Causal focus (Angrist/MHE)**: Panel methods applied to treatment effects and identification problems
+
+**Wooldridge References:**
+- **Chapter 23**: Basic Linear Unobserved Effects Panel Data Models (fixed effects, random effects, within transformation)
+- **Chapter 24**: Linear Models with Endogenous Regressors (panel IV)
+- **Chapter 26**: Attrition and Other Selection Issues (attrition testing and handling)
+- **Corpus Query**: Use `from src.corpus.agent_integration import get_wooldridge_perspective; get_wooldridge_perspective("fixed effects")` to retrieve Wooldridge's detailed guidance
+- **Cross-Reference**: See WOOLDRIDGE_EVALUATION.md:144-162 for comparison with Hansen/Angrist on panel data clustering
+
+## Fixed Effects Models
+
+### Implementation Requirements
+1. **Within transformation** - Use within (demeaned) estimator
+   - Can use least squares dummy variable (LSDV) or within transformation
+   - Report number of fixed effects absorbed
+
+2. **Standard errors** - Always cluster appropriately:
+   - **Unit-level clustering** - Default for most applications
+   - **Two-way clustering** - Unit and time if needed
+   - Report cluster-robust standard errors
+   - **Small-sample correction** - Applied by default in `linearmodels`
+     - Adjusts clustered standard errors for finite sample bias
+     - Particularly important for small panels (few clusters or short time periods)
+     - `linearmodels` uses small-sample correction by default (matches Stata)
+     - **Wooldridge (Chapter 23)**: Uses clustered SE with small-sample correction for panel data
+       - Example: `cov_type='clustered', cluster_entity=True` (default includes small-sample correction)
+       - This is the standard approach recommended by Wooldridge and matches Stata's default
+     - The correction adjusts the variance-covariance matrix to account for finite sample bias in clustered standard errors
+     - When clusters are few relative to observations, uncorrected clustered SE can be biased downward
+     - Small-sample correction provides more conservative (larger) standard errors, improving inference in finite samples
+   - **Corpus Query**: `get_wooldridge_perspective("clustered standard errors")` for detailed guidance
+   - **Cross-Reference**: WOOLDRIDGE_EVALUATION.md:144-162
+
+3. **Entity (unit) fixed effects** - Include when:
+   - Unobserved time-invariant heterogeneity is concern
+   - Use `entity_effects=True` or include unit dummies
+
+4. **Time fixed effects** - Include when:
+   - Common shocks across units
+   - Macroeconomic trends
+   - Use `time_effects=True` or include time dummies
+
+5. **Two-way fixed effects** - Most common specification
+   - Both entity and time fixed effects
+   - Standard specification: `Y_it = X_it'β + α_i + γ_t + ε_it`
+
+### Diagnostics
+- Test for serial correlation (Wooldridge test)
+- Test for heteroskedasticity
+- Report R-squared: within, between, overall
+- Report number of groups and time periods
+
+**Wooldridge's Diagnostic Approach (Chapter 23):**
+- Emphasizes understanding of within transformation mechanics
+- Shows both manual within transformation and automatic FE estimation
+- Demonstrates importance of proper clustering and small-sample corrections
+- **Corpus Query**: `semantic_search_wooldridge("panel data diagnostics serial correlation")` for Wooldridge's diagnostic guidance
+
+### Example Specification
+```python
+# Two-way fixed effects
+# Y_it = X_it'β + α_i + γ_t + ε_it
+# Where:
+#   - α_i: entity fixed effects
+#   - γ_t: time fixed effects
+#   - Standard errors clustered at entity level
+```
+
+### When NOT to Use Fixed Effects
+
+**Do NOT use fixed effects if:**
+
+1. **No within-unit variation in key variables** - Time-invariant variables or very little variation
+   - Problem: FE absorbs all time-invariant factors, including your variable of interest
+   - Check: Run FE and see if R² within is very low
+   - Alternative: Random effects (if exogeneity holds), or cross-sectional analysis
+
+2. **Very short panel (T = 2-3)** - Few time periods per unit
+   - Problem: Limited within-variation, imprecise estimates, incidental parameters problem
+   - Alternative: First-differences (for T=2), random effects, or pooled OLS with controls
+
+3. **Strict exogeneity violated** - Regressors correlated with future shocks
+   - Problem: FE requires strict exogeneity (no feedback from Y to X)
+   - Alternative: GMM with lags as instruments, or acknowledge violation
+
+4. **Main variable of interest is time-invariant** - E.g., gender, race, place of birth
+   - Problem: FE completely absorbs time-invariant variables
+   - Alternative: Random effects, between estimator, or don't use panel methods
+
+5. **Very large number of groups with few observations** - Computational burden
+   - Problem: Many fixed effects to estimate, slow computation
+   - Alternative: First-differencing, random effects, or absorb FE
+
+6. **Want to estimate effect of time-invariant variables** - FE can't identify these
+   - Problem: Fixed effects absorb all time-invariant factors
+   - Alternative: Hausman-Taylor estimator, random effects, or Mundlak approach
+
+7. **Time trends differ across units** - Unit-specific time trends matter
+   - Problem: Standard FE doesn't account for different slopes
+   - Alternative: Include unit-specific time trends, or interactive FE
+
+### Common Fixed Effects Mistakes
+
+1. **Not clustering standard errors** - Must cluster at entity level minimum
+2. **Including time-invariant variables** - They're absorbed, coefficient will be missing
+3. **Assuming FE solves all endogeneity** - Only solves time-invariant confounding
+4. **Not checking within-variation** - If very low, FE may not be informative
+5. **Ignoring unit-specific trends** - May need unit × time interactions
+6. **Not reporting R² within** - This is the relevant fit measure for FE
+7. **Treating FE as nuisance** - FE are substantively important, can examine them
+
+## Random Effects Models
+
+### When to Use
+- When unobserved heterogeneity is uncorrelated with regressors
+- More efficient than fixed effects if assumption holds
+- Use Hausman test to choose between FE and RE
+
+### Implementation Requirements
+1. **Hausman test** - Test FE vs RE
+   - Null hypothesis: Random effects is appropriate
+   - If p < 0.05, use fixed effects
+   - Report test statistic and p-value
+
+2. **GLS estimation** - Use generalized least squares
+   - Account for within-group correlation
+   - More efficient than pooled OLS
+
+3. **Report** - Both within and between variation
+   - Within R-squared
+   - Between R-squared
+
+### When NOT to Use Random Effects
+
+**Do NOT use random effects if:**
+
+1. **Hausman test rejects (p < 0.05)** - RE assumption violated
+   - Problem: Unobserved heterogeneity correlated with regressors, RE biased
+   - Alternative: Use fixed effects (Hausman test tells you to do this)
+
+2. **Endogeneity suspected** - Regressors correlated with unobserved effects
+   - Problem: RE requires strict exogeneity, bias if violated
+   - Alternative: Fixed effects, or Panel IV
+
+3. **Want to estimate time-invariant effects but suspect correlation** - RE can estimate time-invariant but assumes no correlation
+   - Problem: Get biased estimates of time-invariant effects
+   - Alternative: Fixed effects (can't estimate time-invariant), or Mundlak approach
+
+4. **Small number of time periods (T < 5)** - RE efficiency gain is minimal
+   - Problem: Limited gain over FE, and if Hausman test rejects you should use FE anyway
+   - Alternative: Just use fixed effects
+
+5. **Research design focused on within-unit variation** - E.g., policy changes within units
+   - Problem: RE uses both within and between variation, but you only want within
+   - Alternative: Fixed effects (focuses on within-variation only)
+
+### Common Random Effects Mistakes
+
+1. **Not running Hausman test** - Must test FE vs RE, don't just assume RE is valid
+2. **Using RE when Hausman rejects** - If test rejects, use FE (this is non-negotiable)
+3. **Assuming RE is "better"** - RE is only better IF assumption holds (often doesn't)
+4. **Not reporting both FE and RE** - Show both, let Hausman test decide
+5. **Confusing efficiency with consistency** - RE is more efficient but can be inconsistent
+
+## Panel IV Estimation
+
+### Requirements
+1. **First-stage statistics** - Same as cross-section IV:
+   - First-stage F-statistic
+   - First-stage R-squared
+   - Weak instrument diagnostics
+
+2. **Fixed effects** - Typically include:
+   - Entity fixed effects (absorb time-invariant confounders)
+   - Time fixed effects (absorb common shocks)
+
+3. **Standard errors** - Cluster at entity level
+   - May need two-way clustering if instruments vary by time
+
+### Implementation Checklist
+- [ ] First-stage F-statistic
+- [ ] IV estimate with fixed effects
+- [ ] Clustered standard errors
+- [ ] Overidentification test (if applicable)
+- [ ] Reduced form estimate
+
+## Panel-Specific Issues
+
+### Serial Correlation
+- **Test**: Wooldridge test for serial correlation in panel data
+- **Solution**: Cluster standard errors at unit level
+- Report test results
+
+### Heteroskedasticity
+- **Test**: Breusch-Pagan test
+- **Solution**: Use robust/clustered standard errors
+- Default to robust standard errors
+
+### Cross-Sectional Dependence
+- **Test**: Pesaran CD test
+- **Solution**: Driscoll-Kraay standard errors or two-way clustering
+- Important for macro panels or with spatial correlation
+
+### Unit Roots / Non-Stationarity
+- Test for unit roots in panel data (Levin-Lin-Chu, Im-Pesaran-Shin)
+- Consider first-differencing if non-stationary
+- Use panel VAR if needed
+
+## Specification Checks
+For all panel models:
+1. **Poolability test** - Test if pooling is appropriate (F-test)
+2. **Hausman test** - FE vs RE (for RE models)
+3. **Serial correlation** - Wooldridge test
+4. **Heteroskedasticity** - Breusch-Pagan test
+5. **Cross-sectional dependence** - Pesaran CD test (if applicable)
+
+## Survey Weights in Panel Models
+
+### When to Use Weights
+- **Stratified sampling in initial period**: When panel data comes from stratified sampling in the first wave
+- **Variable probability sampling**: When observations are kept with varying probabilities
+- **Oversampling**: When certain groups are intentionally overrepresented in the panel
+
+### Weight Implementation
+- Use `weights` parameter in panel estimation (e.g., `linearmodels.PanelOLS.from_formula(..., weights=weights)`)
+- Weights from initial sampling period are typically used for all time periods
+- Weighted panel estimator accounts for stratification in sampling design
+- Report whether weighted or unweighted estimates are used
+- Compare weighted vs. unweighted estimates when relevant
+
+### Weight Validation
+- Validate weights are positive and non-zero before estimation
+- Report weight statistics (min, max, mean, median)
+- Document weight source and what they represent
+- Check if weights vary by time period (usually constant for initial-period stratification)
+
+Example:
+```python
+# Panel FE with survey weights
+from linearmodels import PanelOLS
+
+# Validate weights
+assert (weights > 0).all(), "All weights must be positive"
+
+# Weighted panel FE
+model = PanelOLS.from_formula(
+    'y ~ x1 + x2 + EntityEffects',
+    data=panel_data,
+    weights=weights
+)
+results = model.fit(cov_type='clustered', cluster_entity=True)
+```
+
+## Attrition in Panel Data
+
+**Wooldridge Reference: Chapter 26 - Attrition and Other Selection Issues**
+
+Wooldridge provides comprehensive guidance on testing and correcting for attrition bias in panel data. This section synthesizes Wooldridge's approach with our implementation requirements.
+
+**Corpus Query**: Use `get_wooldridge_perspective("attrition")` to retrieve Wooldridge's detailed guidance on attrition testing and correction methods.
+
+**Cross-Reference**: See WOOLDRIDGE_EVALUATION.md:1472-1496 for detailed methodology extraction from Chapter 26.
+
+### Testing for Attrition Bias
+1. **Selective attrition test**: Compare attritors vs. non-attritors on observables
+   - Test if units that drop out differ systematically from those that remain
+   - Compare means of key variables between attritors and non-attritors
+   - Report standardized differences (std diff < 0.25 is good)
+   
+2. **Attrition indicator test**: Include future attrition indicator in regression
+   - Include `s_{i,t+1}` (indicator for attrition next period) as regressor
+   - Test if coefficient is significant (suggests selective attrition)
+   - Use fixed effects specification: `y_it = X_it'β + α_i + γ*s_{i,t+1} + ε_it`
+
+3. **Joint test for attrition bias**: Test multiple attrition indicators
+   - Include time-specific attrition indicators: `d2_t * λ_{it}, ..., dT_t * λ_{it}`
+   - Joint test of H0: all attrition coefficients = 0
+   - If rejected, attrition is selective and may bias estimates
+
+### Documenting Attrition Patterns
+- Report when units drop out (which time periods)
+- Report how many units attrit in each period
+- Report total number of units that ever attrit
+- Report balanced vs. unbalanced panel structure
+- Show attrition rates by key characteristics (if selective)
+
+### Correcting for Attrition Bias
+
+**Wooldridge's Approach (Chapter 26, Section 17.7.3):**
+
+Wooldridge recommends sequential approaches to attrition correction, recognizing that attrition is an absorbing state (once out, always out). The following methods are based on Wooldridge's comprehensive treatment.
+
+**Method 1: Inverse Probability Weighting (IPW)**
+- Estimate probability of remaining in sample: `P(s_{it} = 1 | s_{i,t-1} = 1, w_{it})`
+- Use probit/logit to estimate selection probabilities for each time period
+- Weight observations by inverse of probability of being observed
+- Sequential approach: estimate probabilities for t=2, then t=3, etc.
+- Apply weights in estimation: `weight_{it} = 1 / P(s_{it} = 1 | ...)`
+
+**Method 2: Selection Correction Terms**
+- Include inverse Mills ratio (λ) from attrition probit as regressor
+- Estimate: `y_it = X_it'β + ρ_t * λ_{it} + α_i + ε_it`
+- Test H0: ρ_t = 0 for all t (attrition bias test)
+- If rejected, attrition correction is needed
+
+**Method 3: First-Differencing with Attrition Correction**
+- Use first-differenced model: `Δy_it = ΔX_it'β + ρ_t * λ_{it} + Δε_it`
+- Estimate selection probit for each period
+- Include inverse Mills ratio in first-differenced equation
+- Test for attrition bias with joint test of ρ_t = 0
+
+### Implementation Checklist
+- [ ] Test for selective attrition (compare attritors vs. non-attritors)
+- [ ] Document attrition patterns (when units drop out, counts)
+- [ ] Test attrition bias (include attrition indicators in regression)
+- [ ] If selective attrition detected: Apply inverse probability weighting or selection correction
+- [ ] Report balanced vs. unbalanced panel results
+- [ ] Compare results with and without attrition correction
+
+## Reporting Standards
+- Report number of groups (N) and time periods (T)
+- Report R-squared: within, between, overall
+- Specify clustering level for standard errors
+- Report diagnostic test results
+- Show comparison with pooled OLS if relevant
+- **Attrition**: Report attrition patterns and test results (if applicable)
+- **Survey weights**: Whether weights were used and why (if applicable)

@@ -1,0 +1,422 @@
+---
+description: Rules for data loading, validation, and preprocessing
+globs:
+  - "**/data/**/*.py"
+  - "**/loaders.py"
+  - "**/validators.py"
+  - "**/preprocessors.py"
+---
+
+# Data Handling Standards
+
+## Critical: User Interaction Protocol
+
+**ALL user interaction must happen in CURSOR CHAT, NOT in terminal commands or code:**
+
+- **NEVER use `input()`, `raw_input()`, or any terminal-blocking prompts in code**
+- **NEVER create commands that prompt for y/n or other responses in the terminal**
+- All questions, confirmations, and user choices must be handled through Cursor chat messages
+- Code functions should only return data structures (dicts, lists, etc.)
+- The agent asks questions in chat, waits for user response in chat, then proceeds based on response
+- If you need user input, ask in chat conversation, NOT in terminal commands
+
+This prevents commands from blocking and ensures smooth interaction flow.
+
+## Data Preservation
+- **ALWAYS preserve original data** - never modify data in place
+- Create copies using `.copy()` or `df.copy(deep=True)` for DataFrames
+- Work on copies for all transformations
+- Keep original data intact for reproducibility
+
+## Iteration Hygiene: Preventing Analysis Pollution
+
+When modifying or re-running models mid-workflow, it's critical to prevent confusion from previous analysis outputs.
+
+### Clean Reset Protocol
+
+**Before re-running a modified model, suggest running the cleanup utility:**
+
+```
+"Before re-running this model, would you like me to clean previous outputs? 
+This will remove files in data/outputs/ and transient files to prevent confusion. 
+Run: python scripts/reset_analysis.py"
+```
+
+**The agent should:**
+1. **Check for existing outputs** before running models: "I notice there are existing output files from a previous run. Would you like to clean them first?"
+2. **Suggest reset script** when user mentions modifying/re-running models: "Since you're modifying the model, I recommend running `python scripts/reset_analysis.py` to clean previous outputs."
+3. **Wait for user confirmation** - don't automatically delete files without asking
+
+### Output Organization
+
+**Standard output locations:**
+- **Raw data**: `data/raw/` - Original, unmodified data files
+- **Processed data**: `data/processed/` - Cleaned, transformed data
+- **Analysis outputs**: `data/outputs/` - All generated outputs (figures, tables, results)
+  - Figures: `data/outputs/figures/`
+  - Tables: `data/outputs/tables/`
+  - Results: `data/outputs/results/`
+
+**Output file naming:**
+- Use descriptive, timestamped names when appropriate: `did_parallel_trends_20250103.png`
+- Include model specification in filename: `ols_robust_fe_main.csv`
+- Avoid generic names that could be confused: `results.csv`, `output.png`
+
+### Reset Analysis Script
+
+The `scripts/reset_analysis.py` utility:
+- Deletes all files in `data/outputs/`
+- Removes transient files in project root (`*.png`, `*.pdf`, `*results*.csv`)
+- Cleans cache directories (`__pycache__`, `.pytest_cache`)
+- Provides dry-run mode: `python scripts/reset_analysis.py --dry-run`
+
+**Usage:**
+```bash
+# Dry run (see what would be deleted)
+python scripts/reset_analysis.py --dry-run
+
+# Actually reset
+python scripts/reset_analysis.py
+```
+
+**Methodological Foundation:** Our data handling standards synthesize best practices from:
+- **Rigorous documentation (Hansen)**: Explicit requirements for data validation and documentation
+- **Practical application (Angrist/MHE, Wooldridge)**: Data handling serves identification strategy and model requirements
+- **Survey weights (Wooldridge)**: Support for survey weights from stratified/cluster sampling
+
+**Wooldridge References:**
+- **Chapter 20**: Stratified Sampling and Cluster Sampling (survey weights, weighted estimators)
+- **Chapter 26**: Attrition and Other Selection Issues (attrition testing and handling in panel data)
+- **Corpus Query**: Use `get_wooldridge_perspective("survey weights")` or `get_wooldridge_perspective("attrition")` to retrieve Wooldridge's detailed guidance
+- **Cross-Reference**: See WOOLDRIDGE_EVALUATION.md:1450-1470 (survey weights) and WOOLDRIDGE_EVALUATION.md:1472-1496 (attrition)
+
+## Data Validation
+Before any analysis, validate:
+1. **Required columns exist** - Check all required variables are present
+2. **Data types** - Verify variables are appropriate types (numeric, datetime, categorical)
+3. **Missing values** - Identify and document missingness patterns
+4. **Sample size** - Ensure sufficient observations for analysis
+5. **Observations per regressor** - Calculate n/k ratio (critical for standard error selection)
+   - Report this ratio in diagnostics
+   - < 100: Small sample, consider HC3 standard errors
+   - 100-250: Medium sample, consider HC2 standard errors
+   - ≥ 250: Large sample, HC1 standard errors appropriate
+6. **Unique identifiers** - Verify panel structure (unit-time combinations are unique)
+
+### Pre-Regression Validation Checkpoint
+
+**Before running ANY regression model, validate data quality and stop if critical issues detected:**
+
+1. **Check for critical data quality issues:**
+   - Missing required variables → **STOP**: "Missing required variables: [list]. Cannot proceed with analysis."
+   - Insufficient sample size (n < 30) → **STOP**: "Sample size too small (n=[N]). Minimum recommended: 30 observations."
+   - All values identical in key variables → **STOP**: "No variation in [variable]. Cannot estimate effects."
+   - n/k ratio < 10 → **WARN**: "Very small n/k ratio ([ratio]). Consider reducing regressors or collecting more data."
+
+2. **If critical issues found:**
+   - **STOP the analysis**
+   - Present the issues clearly to the user
+   - Ask: "Critical data quality issues detected. How would you like to proceed?
+     a) Fix the data issues and re-validate
+     b) Adjust the analysis approach
+     c) Review the data requirements again"
+   - **Wait for user response before proceeding**
+
+3. **If validation passes:**
+   - Confirm: "Data validation passed. Sample size: [N], n/k ratio: [ratio]. Ready to proceed with model specification."
+
+Example validation structure:
+```python
+def validate_panel_data(data: pd.DataFrame, unit: str, time: str) -> dict:
+    """Validate panel data structure.
+    
+    Returns dict with validation results and issues found.
+    
+    CRITICAL: This function only validates data. The agent MUST:
+    1. Call this function to validate data (returns dict, does NOT prompt user)
+    2. Check if validation passed (check result["valid"])
+    3. If validation FAILED, DISPLAY issues to user IN CURSOR CHAT and ASK how to proceed IN CHAT
+    4. WAIT FOR USER RESPONSE IN CHAT before proceeding
+    5. Only proceed to regression if user approves OR if validation passed
+    
+    NEVER use input() or terminal-blocking prompts - ALL interaction must be in Cursor chat!
+    """
+    issues = []
+    
+    # Check required columns
+    if unit not in data.columns:
+        issues.append(f"Unit variable '{unit}' not found")
+    
+    # Check for duplicates
+    duplicates = data.duplicated(subset=[unit, time]).sum()
+    if duplicates > 0:
+        issues.append(f"Found {duplicates} duplicate unit-time observations")
+    
+    return {"valid": len(issues) == 0, "issues": issues}
+
+# CRITICAL WORKFLOW (ALL INTERACTION IN CURSOR CHAT, NOT IN CODE):
+# 1. Call validate_panel_data() to get validation results (returns dict, does NOT prompt user)
+# 2. If validation FAILED (critical issues found):
+#    - STOP the analysis
+#    - DISPLAY issues clearly to user IN CURSOR CHAT
+#    - ASK IN CURSOR CHAT: "Critical data quality issues detected. How would you like to proceed? a) Fix issues, b) Adjust approach, c) Review requirements"
+#    - WAIT FOR USER RESPONSE IN CHAT - DO NOT PROCEED AUTOMATICALLY
+# 3. Only proceed to regression if validation PASSED OR user explicitly approves proceeding IN CHAT
+#
+# NEVER use input() or terminal prompts - ALL user interaction happens in Cursor chat interface!
+```
+
+## Pre-Analysis Validation and File Cleanup
+
+**Critical:** Before starting any analysis, check for existing output files and validate the analysis environment.
+
+### File Cleanup Checkpoint
+
+**Before running any analysis:**
+
+1. **Check for existing output files** in common output directories:
+   - `data/outputs/` - Check for existing results files, plots, tables
+   - Current working directory - Check for `.png`, `.pdf`, `.csv` files from previous runs
+   - Look for files with names like: `*results*.csv`, `*diagnostics*.png`, `*plot*.png`, `*table*.csv`
+
+2. **If existing files found, ask the user:**
+   - "I found existing output files from a previous analysis run. Do you want to:
+     a) Clean/remove these files and start fresh?
+     b) Keep them and continue (they may affect re-runs)?
+     c) Archive them to a backup location?"
+   - **Wait for user response before proceeding**
+   - If user chooses to clean, remove/archive files and confirm: "Cleaned [N] files. Ready to proceed with fresh analysis."
+
+3. **If no existing files, proceed with:**
+   - "No existing output files detected. Starting fresh analysis."
+
+**Implementation guidance:**
+```python
+import os
+import glob
+from pathlib import Path
+
+def check_existing_outputs(output_dir="data/outputs"):
+    """Check for existing output files and prompt user.
+    
+    CRITICAL: This function only checks for files. The agent MUST:
+    1. Call this function to check for existing files
+    2. Display results to user IN CURSOR CHAT (not in terminal)
+    3. ASK USER what to do (clean/keep/archive) IN CURSOR CHAT (NOT using input() or terminal prompts)
+    4. WAIT FOR USER RESPONSE IN CHAT before proceeding
+    5. Only then proceed based on user's choice
+    
+    NEVER use input() or any terminal-blocking prompts in code - all interaction must be in Cursor chat!
+    """
+    output_path = Path(output_dir)
+    patterns = ["*.png", "*.pdf", "*results*.csv", "*diagnostics*.png", "*plot*.png", "*table*.csv"]
+    
+    existing_files = []
+    for pattern in patterns:
+        existing_files.extend(output_path.glob(pattern))
+        existing_files.extend(Path(".").glob(pattern))
+    
+    if existing_files:
+        return {
+            "found": True,
+            "files": [str(f) for f in existing_files],
+            "count": len(existing_files)
+        }
+    return {"found": False, "files": [], "count": 0}
+
+# CRITICAL WORKFLOW (ALL INTERACTION IN CURSOR CHAT, NOT IN CODE):
+# 1. Call check_existing_outputs() to get file list (returns dict, does NOT prompt user)
+# 2. If files found, DISPLAY results to user IN CURSOR CHAT and ASK: "I found [N] existing output files. Do you want to: a) Clean, b) Keep, c) Archive?"
+# 3. WAIT FOR USER RESPONSE IN CHAT - DO NOT PROCEED AUTOMATICALLY
+# 4. Only after user responds IN CHAT, proceed based on their choice
+# 
+# NEVER use input() or terminal prompts - ALL user interaction happens in Cursor chat interface!
+```
+
+## Exploratory Data Analysis
+
+**Critical principle:** Know your data before modeling. Always perform exploratory data analysis (EDA) BEFORE running regressions.
+
+### Required EDA Steps
+
+1. **Summary Statistics**
+   - Calculate means, standard deviations, medians, quantiles for all key variables
+   - Report summary statistics by treatment/control groups (if applicable)
+   - Report summary statistics by time periods (if panel data)
+   - Identify outliers and unusual values
+   - **Implementation:** Use `src.utils.summary_stats.summary_statistics_by_group()` for standardized summary statistics by group
+
+2. **Data Visualization**
+   - Distribution plots (histograms, density plots) for key variables
+   - Scatter plots for relationships between variables
+   - Time series plots (if panel/time series data)
+   - Group comparisons (box plots, violin plots by treatment status)
+
+3. **Data Understanding**
+   - Understand the distribution of key variables
+   - Identify missing data patterns
+   - Check for coding errors or data issues
+   - Verify variable ranges make sense (e.g., percentages between 0-100)
+
+4. **Pre-Regression Checks**
+   - Examine relationships between variables before specifying models
+   - Check for multicollinearity issues
+   - Understand variation in treatment/explanatory variables
+   - Verify identification strategy is visible in the data
+
+### Post-EDA Validation Checkpoint
+
+**After completing EDA, but BEFORE running any regressions:**
+
+1. **Display all EDA outputs to the user:**
+   - Show summary statistics tables
+   - Display all generated plots/visualizations
+   - Present data quality assessment (missing values, outliers, data structure)
+
+2. **Ask the user validation questions:**
+   - "Please review the summary statistics and plots above. Do they meet best practice expectations?"
+   - "Are there any data quality issues that need to be addressed before modeling?"
+   - "Does the data structure support your intended identification strategy?"
+   - "Are the variable distributions and relationships as expected?"
+
+3. **Based on user response:**
+   - **If user confirms data looks good:** WAIT for explicit confirmation, then proceed with analysis
+   - **If user identifies issues:** Address issues, re-run EDA, and validate again (WAIT for user approval at each step)
+   - **If user is uncertain:** Provide guidance on what to look for, then re-validate (WAIT for user response)
+
+4. **CRITICAL: Only proceed to modeling after user approval:**
+   - **WAIT FOR USER'S EXPLICIT CONFIRMATION** before running any regression
+   - After user confirms: "EDA validation complete. User confirmed data quality. Proceeding to model specification."
+   - If user identifies issues: "EDA validation failed. User identified issues. Addressing data quality concerns before proceeding." (WAIT for user input on how to address)
+   - **DO NOT automatically proceed to regression - user must explicitly approve**
+
+**Rationale:** Understanding data structure, distributions, and relationships before modeling helps with:
+- Appropriate model specification
+- Identifying data quality issues
+- Understanding identification strategy
+- Detecting outliers or influential observations
+- Validating assumptions
+
+Example:
+```python
+# Before regression, always:
+# 1. Summary statistics by group
+summary_stats = data.groupby('treatment')[['outcome', 'covariate1', 'covariate2']].describe()
+print(summary_stats)
+
+# 2. Visualize distributions
+import matplotlib.pyplot as plt
+data['outcome'].hist(by=data['treatment'], bins=30)
+
+# 3. Check for outliers
+print(data[['outcome', 'covariate1']].quantile([0.01, 0.05, 0.95, 0.99]))
+```
+
+## Missing Value Handling
+- **Document all missing value handling decisions**
+- Preferred methods (in order):
+  1. Listwise deletion (document sample size reduction)
+  2. Imputation (only if justified, document method)
+  3. Indicator variables for missingness
+- **Never silently drop missing values** - always report how many observations were removed
+- Use `.isna().sum()` to check missingness before processing
+- Report missingness statistics in output
+
+Example:
+```python
+# Document missing values
+missing_counts = data[required_vars].isna().sum()
+if missing_counts.sum() > 0:
+    print(f"Missing values:\n{missing_counts}")
+    data_clean = data.dropna(subset=required_vars)
+    print(f"Observations before: {len(data)}")
+    print(f"Observations after: {len(data_clean)}")
+```
+
+## Variable Type Preservation
+- Preserve datetime variables as pandas datetime objects
+- Maintain categorical variables as category dtype when appropriate
+- Don't unnecessarily convert integers to floats
+- Preserve time periods as ordered categories if applicable
+
+## Data Preprocessing Standards
+- Create preprocessing functions that are:
+  - Reusable across analyses
+  - Well-documented
+  - Return transformed data with metadata
+- Log all transformations applied
+- Create "analysis-ready" datasets with clear naming
+
+## File I/O
+- Support common formats: CSV, Parquet, Stata (.dta), Excel
+- Use appropriate readers:
+  - `pd.read_csv()` for CSV
+  - `pd.read_parquet()` for Parquet (preferred for large datasets)
+  - `pd.read_stata()` for Stata files
+- Always specify encoding when reading text files (`encoding='utf-8'` or `encoding='latin-1'`)
+- Handle time zone information explicitly for datetime columns
+
+## Survey Weights
+
+**Wooldridge Reference: Chapter 20 - Stratified Sampling and Cluster Sampling**
+
+Wooldridge provides comprehensive guidance on when and how to use survey weights, including weighted estimators for stratified and variable probability sampling. Our approach follows Wooldridge's methodology.
+
+**Corpus Query**: `get_wooldridge_perspective("survey weights")` or `semantic_search_wooldridge("stratified sampling weighted estimators variable probability")` for Wooldridge's detailed guidance.
+
+**Cross-Reference**: See WOOLDRIDGE_EVALUATION.md:1450-1470 for detailed methodology extraction from Chapter 20.
+
+### When Weights Are Needed
+- **Stratified sampling**: Different subsets of population sampled with different frequencies
+- **Variable probability sampling**: Observations kept with varying probabilities based on strata
+- **Oversampling**: Certain groups intentionally overrepresented (e.g., low-income households)
+- **Complex survey designs**: Multi-stage sampling, cluster sampling with stratification
+
+### Weight Validation
+Before using weights in estimation:
+1. **Check weight values**:
+   - Weights must be positive and non-zero
+   - Report minimum, maximum, mean, and median weights
+   - Check for extreme weights (may indicate data issues)
+2. **Document weight source**:
+   - Where weights come from (sampling design, survey documentation)
+   - What the weights represent (inverse sampling probabilities, post-stratification adjustments)
+   - Whether weights are normalized or raw
+3. **Report weighted vs. unweighted statistics**:
+   - Compare weighted and unweighted means for key variables
+   - Document differences (if substantial, weights are important)
+
+### Weight Implementation
+
+**Wooldridge's Approach (Chapter 20, Section 17.8.2):**
+- Weighted M-estimator formula: `min Σ_i Σ_j (p_j^(-1) * r_ij * q(w_i, θ))`
+- Weights are inverse sampling probabilities: `weight = 1 / sampling_probability`
+- In variable probability sampling, weights are `p_j^(-1)` where `p_j` is the probability of keeping an observation in stratum j
+- Weights should be applied in estimation objective function, not just in descriptive statistics
+- For panel data, weights from initial sampling period are typically used for all time periods
+- **Corpus Query**: `semantic_search_wooldridge("weighted estimator stratified sampling equation 17.70")` for Wooldridge's mathematical formulation
+
+Example:
+```python
+# Validate weights
+if weights is not None:
+    assert (weights > 0).all(), "All weights must be positive"
+    assert not weights.isna().any(), "Weights cannot contain missing values"
+    print(f"Weight statistics:")
+    print(f"  Min: {weights.min():.2f}, Max: {weights.max():.2f}")
+    print(f"  Mean: {weights.mean():.2f}, Median: {weights.median():.2f}")
+    
+    # Compare weighted vs unweighted means
+    weighted_mean = (data[var] * weights).sum() / weights.sum()
+    unweighted_mean = data[var].mean()
+    print(f"Weighted mean: {weighted_mean:.2f}, Unweighted: {unweighted_mean:.2f}")
+```
+
+## Data Loading Functions
+All data loaders should:
+- Accept file path as input
+- Return pandas DataFrame
+- Optionally accept column specifications
+- Handle file format automatically based on extension
+- Raise clear errors if file not found or invalid format
+- Support loading weight variables from survey data files

@@ -1,0 +1,477 @@
+---
+description: Diagnostic tests and model validation requirements
+globs:
+  - "**/diagnostics/**/*.py"
+  - "**/tests.py"
+---
+
+# Diagnostic Tests and Model Validation
+
+## Critical: User Interaction Protocol
+
+**ALL user interaction must happen in CURSOR CHAT, NOT in terminal commands or code:**
+
+- **NEVER use `input()`, `raw_input()`, or any terminal-blocking prompts in code**
+- **NEVER create commands that prompt for y/n or other responses in the terminal**
+- All questions, confirmations, and user choices must be handled through Cursor chat messages
+- Code functions should only return diagnostic results (dicts, test statistics, etc.)
+- The agent asks questions in chat, waits for user response in chat, then proceeds based on response
+- If you need user input, ask in chat conversation, NOT in terminal commands
+
+This prevents commands from blocking and ensures smooth interaction flow.
+
+## General Principles
+- **Always include appropriate diagnostics** for the estimation method used
+- **Report test statistics and p-values** - Don't just say "pass" or "fail"
+- **Visual diagnostics** - Plots complement statistical tests
+- **Document failures** - If assumptions are violated, discuss implications
+
+**Methodological Foundation:** Our diagnostic requirements synthesize best practices from:
+- **Explicit diagnostics (Hansen)**: Comprehensive diagnostic testing with clear reporting requirements
+- **Practical application (Angrist/MHE, Wooldridge)**: Diagnostics serve identification strategy and model validation
+- **Panel expertise (Wooldridge)**: Panel-specific diagnostics (serial correlation, attrition testing)
+
+## Rule-of-Thumb Diagnostic Thresholds
+
+**Use these thresholds to interpret diagnostic tests and guide decisions:**
+
+### Instrumental Variables (IV)
+
+**First-Stage F-Statistic:**
+- **F > 20**: Strong instruments - Proceed normally
+- **F = 10-20**: Moderately weak instruments - Use robust inference (Anderson-Rubin test, weak IV robust CI)
+- **F < 10**: Weak instruments - **STOP**. Find better instruments or use different method
+- **Stock-Yogo critical values**: More precise weak instrument thresholds (varies by number of instruments)
+
+**First-Stage R²:**
+- **R² > 0.10**: Reasonable instrument strength
+- **R² < 0.05**: Very weak instruments, concerning even if F > 10
+
+**Overidentification Test (Sargan/Hansen J):**
+- **p > 0.10**: Instruments appear valid (fail to reject null)
+- **p < 0.05**: Reject instrument validity - **STOP**. At least one instrument is invalid
+
+### Difference-in-Differences (DiD)
+
+**Parallel Trends Test:**
+- **p > 0.10**: Strong support for parallel trends - Proceed
+- **p = 0.05-0.10**: Borderline - Examine visually, discuss with user
+- **p < 0.05**: Parallel trends violated - **STOP**. Discuss alternatives with user
+
+**Event Study (Pre-Treatment Leads):**
+- **All leads insignificant (p > 0.10)**: Strong support for parallel trends
+- **Some leads significant**: Examine magnitude and pattern, may indicate violation
+- **Systematic pattern in leads**: Clear violation of parallel trends
+
+**Balance (Standardized Differences):**
+- **Std diff < 0.10**: Excellent balance
+- **Std diff < 0.25**: Good balance (acceptable)
+- **Std diff = 0.25-0.50**: Moderate imbalance - Discuss with user, may need controls
+- **Std diff > 0.50**: Poor balance - **Risk of selection bias**
+
+### Regression Discontinuity (RD)
+
+**McCrary Manipulation Test:**
+- **p > 0.10**: No evidence of manipulation - Proceed
+- **p = 0.05-0.10**: Borderline - Examine density plot visually
+- **p < 0.05**: Evidence of manipulation - **STOP**. Discuss donut RD or alternative methods
+
+**Bandwidth Sensitivity:**
+- **Estimates similar across 0.5x, 1.0x, 1.5x bandwidth**: Robust - Good
+- **Estimates change sign or significance**: Not robust - **Concerning**. Report range of estimates
+
+**Sample Size Near Cutoff:**
+- **N > 100 within bandwidth**: Adequate for local polynomial
+- **N = 50-100**: Borderline, wider bandwidth may help
+- **N < 50**: Too few observations - **STOP**. RD may not be feasible
+
+### Matching Methods
+
+**Propensity Score Overlap:**
+- **Min pscore > 0.1 and Max pscore < 0.9** (after trimming): Good overlap
+- **Min pscore < 0.05 or Max pscore > 0.95**: Poor overlap - **Many observations trimmed**
+- **No overlap**: Matching not feasible - **STOP**
+
+**Balance After Matching (Standardized Differences):**
+- **Std diff < 0.10**: Excellent balance
+- **Std diff < 0.25**: Good balance (acceptable threshold)
+- **Std diff > 0.25**: Poor balance - **STOP**. Try different matching algorithm or method
+
+**Common Support Trimming:**
+- **< 5% observations trimmed**: Minimal loss, good generalizability
+- **5-15% trimmed**: Moderate loss, acceptable
+- **> 15% trimmed**: Substantial loss - **External validity concerns**. Discuss with user
+
+### Panel Data Methods
+
+**Hausman Test (FE vs RE):**
+- **p > 0.10**: Random effects appropriate (fail to reject null)
+- **p < 0.05**: Use fixed effects (reject random effects assumption)
+- **p = 0.05-0.10**: Borderline - Discuss trade-offs, lean toward FE
+
+**Within R² (Fixed Effects):**
+- **R² within > 0.10**: Reasonable within-variation
+- **R² within < 0.05**: Very little within-variation - **FE may not be informative**
+- **R² overall >> R² within**: Most variation is between-units, not within
+
+**Serial Correlation (Wooldridge Test):**
+- **p > 0.10**: No evidence of serial correlation
+- **p < 0.05**: Serial correlation detected - **Use clustered standard errors**
+
+**Number of Clusters:**
+- **N_clusters > 50**: Clustered SE reliable
+- **N_clusters = 20-50**: Borderline - Use small-sample correction
+- **N_clusters < 20**: Clustered SE unreliable - **Caution**. Consider bootstrap or wild cluster bootstrap
+
+### General Regression Diagnostics
+
+**Variance Inflation Factor (VIF):**
+- **VIF < 5**: No multicollinearity concern
+- **VIF = 5-10**: Moderate multicollinearity - Monitor but acceptable
+- **VIF > 10**: High multicollinearity - **Consider removing or combining variables**
+
+**Cook's Distance:**
+- **Cook's D < 4/n**: Not influential
+- **Cook's D > 4/n**: Influential observation - **Investigate**. May need robust regression
+
+**Leverage (h_ii):**
+- **h_ii < 2*(k/n)**: Normal leverage
+- **h_ii > 2*(k/n)**: High leverage - **Use HC2 or HC3 standard errors**
+- **h_ii close to 1**: Extreme leverage - **Investigate observation**
+
+**Observations per Regressor (n/k):**
+- **n/k > 250**: Use HC1 robust SE
+- **n/k = 100-250**: Use HC2 robust SE
+- **n/k < 100**: Use HC3 robust SE (more conservative)
+
+### Statistical Significance
+
+**P-Values:**
+- **p < 0.01**: Highly significant (*** in tables)
+- **p < 0.05**: Significant (** in tables)
+- **p < 0.10**: Marginally significant (* in tables) - Acceptable in some contexts
+- **p > 0.10**: Not statistically significant
+
+**Confidence Intervals:**
+- **95% CI excludes zero**: Statistically significant at 5% level
+- **90% CI excludes zero**: Statistically significant at 10% level
+
+## Regression Diagnostics
+
+### Assumption Tests
+1. **Normality of residuals**
+   - Test: Jarque-Bera, Shapiro-Wilk
+   - Visual: Q-Q plot
+   - Note: Less critical with large samples
+
+2. **Homoskedasticity**
+   - Test: Breusch-Pagan, White test
+   - Visual: Residuals vs. fitted plot, scale-location plot
+   - Solution: Use robust standard errors (default)
+
+3. **Linearity**
+   - Visual: Residuals vs. fitted plot
+   - Test: RESET test
+   - Solution: Transformations or polynomial terms
+
+4. **Autocorrelation** (time series/panels)
+   - Test: Durbin-Watson, Ljung-Box, Wooldridge test
+   - Solution: Cluster standard errors or use HAC standard errors
+
+5. **Multicollinearity**
+   - Test: Variance Inflation Factor (VIF)
+   - Threshold: VIF > 10 is concern
+   - Solution: Remove redundant variables
+
+### Outlier and Influence Diagnostics
+- **Studentized residuals**: |residual| > 3 indicates outlier
+- **Leverage (hat values, h_ii)**: 
+  - Mean leverage = k/n (regressors/observations)
+  - High leverage threshold: > 2*(k/n) or close to 1
+  - Leverage close to 1: Observation completely determines regression plane
+  - **Connection to HC variants**: High leverage points cause problems for HC1
+    - When high leverage detected: Recommend HC2 or HC3
+    - HC2 and HC3 give higher weight to residuals with higher leverage
+  - Report: Maximum leverage, mean leverage, number of high leverage points
+- **Cook's distance**: > 4/n indicates influential observation
+- **DFBETAS**: > 2/√n indicates observation affects coefficient
+
+### Standard Error Selection Diagnostics
+- **Observations per regressor (n/k)**:
+  - Calculate: n/k = number of observations / number of regressors
+  - **Critical metric** for choosing HC variant (not absolute sample size)
+  - n/k ≥ 250: HC1 appropriate
+  - 100 ≤ n/k < 250: HC2 recommended
+  - n/k < 100: HC3 recommended (MacKinnon and White 1985)
+  - Report n/k ratio in diagnostics
+- **Leverage statistics**:
+  - If high leverage points (> 2*(k/n)): Recommend HC2 or HC3
+  - If leverage close to 1: Strongly recommend HC3
+
+### Joint Hypothesis Testing
+
+Test joint significance of multiple coefficients using F-tests or Wald tests.
+
+**Implementation:** Use `src.diagnostics.joint_tests.test_joint_significance()` for joint hypothesis testing.
+
+**When to use:**
+- Testing sets of instruments (e.g., all QOB×YOB interaction terms)
+- Testing polynomial terms (e.g., linear, quadratic, cubic terms together)
+- Testing interaction effects (e.g., all interaction terms)
+- Testing fixed effects (e.g., all time fixed effects)
+- Testing groups of dummy variables
+
+**Implementation:**
+- **F-test**: For nested models or testing subsets of coefficients
+  - Test statistic follows F-distribution
+  - Null hypothesis: All tested coefficients are zero
+- **Wald test**: For non-nested models or general linear hypotheses
+  - Test statistic follows chi-square distribution
+  - More flexible than F-test
+
+**Reporting:**
+- Report test statistic and p-value
+- Clearly state null hypothesis being tested
+- Document which coefficients are being tested jointly
+
+Example use cases:
+- IV: Test joint significance of all instruments (first-stage F-statistic is a joint test)
+- RD: Test joint significance of polynomial terms in running variable
+- Panel: Test joint significance of time fixed effects
+- Matching: Test joint significance of balance improvement across all covariates
+
+**Rationale:** Joint tests are important for:
+- Assessing instrument relevance (first-stage F-statistic)
+- Testing model specification (polynomial terms, interactions)
+- Validating model assumptions (fixed effects significance)
+- Providing evidence for identification strategy (multiple instruments)
+
+## Causal Inference Diagnostics
+
+### Difference-in-Differences
+- Parallel trends test (pre-treatment periods)
+- Balance tests (pre-treatment means)
+- Event study (check pre-trends)
+- Placebo tests (fake treatment dates)
+
+### Regression Discontinuity
+- McCrary density test (manipulation at cutoff)
+- Bandwidth sensitivity
+- Polynomial order sensitivity
+- Donut RD (exclude observations near cutoff)
+
+### Instrumental Variables
+- First-stage F-statistic (weak instruments)
+- Overidentification test (Sargan/Hansen J-test)
+- Reduced form results
+- Exclusion restriction discussion
+
+### Matching
+- Balance tests (before and after matching)
+- Propensity score overlap
+- Caliper sensitivity
+- Common support
+
+## Panel Data Diagnostics
+
+### Model Selection
+- **Poolability test**: F-test for pooling vs. individual regressions
+- **Hausman test**: Fixed effects vs. random effects
+- **F-test for fixed effects**: Test if FE are jointly significant
+
+### Attrition Diagnostics
+
+**Testing for Selective Attrition:**
+1. **Compare attritors vs. non-attritors**:
+   - Test if units that drop out differ systematically on observables
+   - Compare means of key variables: `E[X | attrit] vs E[X | remain]`
+   - Calculate standardized differences: `(mean_attrit - mean_remain) / pooled_SD`
+   - Standardized difference < 0.25 suggests good balance
+   - Report t-tests or chi-square tests for differences
+
+2. **Attrition indicator test**:
+   - Include future attrition indicator `s_{i,t+1}` as regressor
+   - Fixed effects specification: `y_it = X_it'β + α_i + γ*s_{i,t+1} + ε_it`
+   - Test H0: γ = 0 (no selective attrition)
+   - If γ significant, attrition is selective and may bias estimates
+
+3. **Joint test for attrition bias**:
+   - Include time-specific attrition correction terms: `d2_t * λ_{it}, ..., dT_t * λ_{it}`
+   - Estimate selection probit for each period: `P(s_{it} = 1 | s_{i,t-1} = 1, w_{it})`
+   - Include inverse Mills ratio (λ) in main equation
+   - Joint test H0: all attrition coefficients (ρ_t) = 0
+   - If rejected, attrition is selective and correction needed
+
+**Documenting Attrition Patterns:**
+- Report attrition rates by time period
+- Report total number of units that ever attrit
+- Show attrition by key characteristics (if selective)
+- Report balanced vs. unbalanced panel structure
+- Document when units drop out (which periods)
+
+**Attrition Correction Methods:**
+- **Inverse Probability Weighting (IPW)**: Weight by inverse of probability of being observed
+- **Selection Correction**: Include inverse Mills ratio from attrition probit
+- **First-Differencing with Correction**: Use first-differenced model with attrition terms
+
+### Panel-Specific Issues
+1. **Serial correlation**
+   - Test: Wooldridge test
+   - Solution: Cluster standard errors
+
+2. **Heteroskedasticity**
+   - Test: Breusch-Pagan test
+   - Solution: Robust/clustered standard errors
+
+3. **Cross-sectional dependence**
+   - Test: Pesaran CD test
+   - Solution: Driscoll-Kraay or two-way clustering
+
+4. **Unit roots**
+   - Test: Levin-Lin-Chu, Im-Pesaran-Shin
+   - Solution: First-differencing or panel cointegration
+
+## Visual Diagnostics
+
+### Always Include
+1. **Residual plots**:
+   - Residuals vs. fitted values
+   - Q-Q plot of residuals
+   - Scale-location plot
+
+2. **Model-specific plots**:
+   - DiD: Parallel trends plot, event study
+   - RD: Scatterplot with fitted lines
+   - Matching: Propensity score distributions
+
+### Plot Standards
+- Clear axis labels and titles
+- Confidence intervals where appropriate
+- Publication-quality (high DPI, proper sizing)
+- Colorblind-friendly palettes
+
+### Post-Diagnostic Validation Checkpoint
+
+**After generating diagnostic plots, but BEFORE proceeding with analysis interpretation:**
+
+1. **Display all diagnostic plots to the user:**
+   - Show residual plots (residuals vs fitted, Q-Q plot, scale-location)
+   - Display model-specific diagnostic plots (parallel trends, RD plots, propensity score distributions, etc.)
+   - Present diagnostic test results (test statistics, p-values, interpretations)
+
+2. **Ask the user validation questions:**
+   - "Please review the diagnostic plots and test results above. Do they meet best practice expectations?"
+   - For residual plots: "Do the residuals appear randomly scattered? Does the Q-Q plot suggest normality?"
+   - For model-specific diagnostics: "Do the parallel trends/pre-treatment patterns look reasonable? Does the identification strategy appear valid?"
+   - "Are there any diagnostic failures that need to be addressed?"
+
+3. **Provide guidance on what to look for:**
+   - Residuals vs fitted: Should show random scatter, no patterns
+   - Q-Q plot: Points should fall roughly on the line (normality)
+   - Parallel trends: Pre-treatment trends should be parallel
+   - RD plots: Should show clear discontinuity at cutoff
+   - Propensity score: Should show good overlap between treatment/control
+
+4. **Based on user response and diagnostic results:**
+   - **If diagnostics pass AND user confirms:** "Diagnostics validated. Ready to proceed with interpretation." **WAIT FOR USER'S EXPLICIT CONFIRMATION** before proceeding to interpretation.
+   - **If diagnostics fail:** "Diagnostic failures detected: [list issues]. Recommended actions: [suggestions]. Should we:
+     a) Apply corrections (robust SE, transformations, etc.) and re-run diagnostics?
+     b) Consider alternative specifications?
+     c) Document limitations and proceed with caution?"
+     **WAIT FOR USER RESPONSE - DO NOT PROCEED AUTOMATICALLY**
+   - **If user uncertain:** Provide detailed interpretation guidance, then re-validate (WAIT for user response at each step)
+   - **CRITICAL: STOP analysis if critical diagnostic failures cannot be addressed - DO NOT proceed without user approval**
+
+5. **CRITICAL: Only proceed to interpretation after validation and user approval:**
+   - **ALWAYS wait for user confirmation that diagnostics are acceptable before proceeding**
+   - If corrections applied, re-run diagnostics and validate again (WAIT for user approval at each step)
+   - Document any diagnostic concerns that cannot be resolved
+   - **DO NOT automatically proceed to interpretation - user must explicitly confirm**
+
+## Reporting Diagnostics
+
+### Format
+For each diagnostic test, report:
+- Test name
+- Null hypothesis
+- Test statistic
+- P-value
+- Interpretation
+- Action taken (if any)
+
+Example:
+```
+Breusch-Pagan Test for Heteroskedasticity:
+  Null: Homoskedasticity
+  Test statistic: 15.23
+  P-value: 0.004
+  Result: Reject null (heteroskedasticity detected)
+  Action: Use robust standard errors (already default)
+```
+
+## Failure Handling and Stop Conditions
+
+### When to Stop Analysis
+
+**STOP the analysis and ask user how to proceed when:**
+
+1. **Critical diagnostic failures that cannot be easily corrected:**
+   - Parallel trends fails for DiD (p < 0.05) → Cannot proceed with standard DiD
+   - Manipulation detected at RD cutoff (p < 0.05) → Cannot proceed with standard RD
+   - Weak instruments (F < 5) → IV estimates unreliable
+   - Poor matching balance (std diff > 0.5 after matching) → Matching inappropriate
+   - Severe multicollinearity (VIF > 20) → Model specification issues
+
+2. **Data quality issues that prevent valid inference:**
+   - Sample size too small (n < 30) → Cannot draw reliable conclusions
+   - No variation in key variables → Cannot estimate effects
+   - Missing > 50% of observations → Sample may be unrepresentative
+   - n/k ratio < 5 → Too many regressors relative to observations
+
+3. **Identification strategy failures:**
+   - No variation in treatment → Cannot estimate treatment effects
+   - Treatment perfectly predicts outcome → No control group
+   - Overlap violations in matching/IV → Common support/identification fails
+
+### Failure Handling Protocol
+
+When assumptions are violated:
+1. **Report the violation** - Don't hide it
+2. **Discuss implications** - How does it affect results?
+3. **STOP and present options:**
+   - Present the diagnostic failure clearly
+   - Explain what it means for the analysis
+   - Offer actionable options:
+     a) Apply corrections (robust SE, cluster, transform, alternative specifications)
+     b) Consider alternative methods (if applicable)
+     c) Document limitations and proceed with caution
+     d) Revise research question or data collection
+4. **Wait for user decision** - Do not proceed automatically
+5. **If user chooses to proceed:**
+   - Apply corrections if requested
+   - Re-run diagnostics and validate again
+   - Document limitations explicitly
+   - Show robustness comparisons (corrected vs. uncorrected results)
+6. **If correction isn't possible:**
+   - Acknowledge limitations clearly
+   - Suggest alternative approaches
+   - Do not proceed with invalid analysis
+
+### Decision Tree for Diagnostic Failures
+
+```
+Diagnostic Failure Detected
+    ↓
+Present failure clearly to user
+    ↓
+Explain implications
+    ↓
+Offer options: (a) Correct, (b) Alternative method, (c) Document & proceed, (d) Revise
+    ↓
+Wait for user decision
+    ↓
+If correction: Apply → Re-validate → Proceed if validated
+If alternative: Suggest method → Guide user
+If proceed: Document limitations → Continue with caution
+If revise: Help user reconsider approach
+```

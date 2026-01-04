@@ -1,0 +1,65 @@
+---
+description: Minimal time series methods - only when needed for robustness
+globs:
+  - "**/time_series/**/*.py"
+---
+
+# Basic Time Series Methods (Minimal)
+
+## When to Use
+- **Only when causal identification strategy is weak** - Time series as robustness check
+- **Not primary method** - We focus on causal inference, not time series forecasting
+- **Document rationale** - Explain why time series methods are needed
+
+## Stationarity Tests
+
+### Augmented Dickey-Fuller (ADF) Test
+- **Purpose**: Test for unit root (non-stationarity)
+- **Null hypothesis**: Series has unit root (non-stationary)
+- **Rejection**: p < 0.05 indicates stationarity
+- **Always report**: Test statistic, p-value, number of lags used
+
+### Implementation
+```python
+# Test for unit root
+# H0: Series has unit root (non-stationary)
+# H1: Series is stationary
+# If p < 0.05, reject H0 (stationary)
+```
+
+### If Non-Stationary
+- Consider first-differencing: ΔY_t = Y_t - Y_{t-1}
+- Test differenced series for stationarity
+- Document transformation applied
+
+## Simple ARIMA Models
+
+### Use Cases (Limited)
+- **Robustness check** - When main analysis is causal inference
+- **Forecasting** - Only if explicitly requested (rare)
+- **Pre-whitening** - For cross-correlation analysis
+
+### Model Selection
+- **AR order**: Use ACF/PACF plots or AIC
+- **Differencing**: Based on ADF test
+- **MA order**: Use ACF/PACF plots or AIC
+- **Report**: AIC, BIC for model comparison
+
+### Minimal Implementation
+- Simple AR(1) or AR(2) often sufficient
+- ARIMA(1,1,0) or ARIMA(1,1,1) for most cases
+- Don't over-engineer - these are robustness checks
+
+## Reporting Requirements
+When using time series methods:
+1. **Justification** - Why time series instead of causal inference?
+2. **Stationarity** - ADF test results
+3. **Model specification** - ARIMA order and selection criteria
+4. **Comparison** - Compare to main causal inference results
+5. **Limitations** - Note that time series alone doesn't establish causality
+
+## Important Notes
+- **Time series ≠ Causal inference** - Correlation in time doesn't imply causation
+- **Prefer causal methods** - Diff-in-diff, IV, RD when possible
+- **Use sparingly** - Only when needed for robustness or when identification is impossible
+- **Document alternatives** - What causal methods were considered and why they can't be used

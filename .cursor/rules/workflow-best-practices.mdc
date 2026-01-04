@@ -1,0 +1,206 @@
+---
+description: Cursor workflow best practices for milestone management and project transitions
+alwaysApply: true
+---
+
+# Cursor Workflow Best Practices
+
+## Milestone and Project Status Checks
+
+When the user reaches a natural milestone or appears to be transitioning between major tasks, proactively check in and remind them of workflow best practices.
+
+### When to Check In
+
+- After completing a major feature or evaluation
+- After committing a milestone to Git
+- When conversation context becomes very long (50+ messages)
+- When user mentions "starting a new phase" or "moving to next task"
+- When user asks about project organization
+
+### Status Check Reminder
+
+When appropriate, provide a friendly reminder like:
+
+"**Milestone Status Check:** We've just completed [X]. Here are your workflow options..."
+
+Then present the relevant best practices below.
+
+---
+
+## After Each Milestone (Same Project/Repo)
+
+**Recommended: Continue in the same chat with a brief summary**
+
+### Why Continue?
+- Context remains relevant (same codebase, same project goals)
+- Chat history provides continuity and context
+- Easy to reference prior decisions and code
+- More efficient for iterative development
+
+### Best Practice Steps:
+
+1. **Create a brief milestone summary** (optional but helpful):
+   ```markdown
+   ## Milestone Complete: [Name]
+   
+   Completed:
+   - [Key achievement 1]
+   - [Key achievement 2]
+   
+   Next: [Next milestone]
+   ```
+
+2. **Continue in the same chat** - The agent remembers all context
+
+3. **Use clear section headers** when starting new work:
+   ```markdown
+   --- Starting: [New Milestone Name] ---
+   ```
+
+4. **Reference previous milestones** when relevant:
+   "Building on the Hansen evaluation findings..."
+
+---
+
+## When Changing Projects/Repos
+
+**Recommended: Start a new chat**
+
+### Why Start Fresh?
+- Clean context prevents confusion between codebases
+- Different projects have different goals and structures
+- Reduces risk of referencing wrong files or assumptions
+- Better organization and mental clarity
+
+### Best Practice Steps:
+
+1. **Before switching projects:**
+   - Commit all work to Git
+   - Create a final summary of key decisions/insights
+   - Save important context to project documentation
+
+2. **Start fresh chat** in the new project
+
+3. **Optional context summary:** If helpful, paste a brief summary at the start:
+   ```markdown
+   ## Context
+   Working on [project name]. Previously completed [relevant context].
+   Current focus: [current task]
+   ```
+
+---
+
+## Hybrid Approach (Complex Milestones)
+
+For particularly large or complex milestones:
+
+1. **Continue in same chat** for related work (e.g., "Hansen evaluation" → "Angrist evaluation")
+
+2. **Use clear separators:**
+   ```markdown
+   --- Milestone: Hansen Evaluation Complete ---
+   
+   --- Starting: Angrist Evaluation ---
+   ```
+
+3. **Export summary if chat gets very long:**
+   - If chat exceeds 100+ messages or becomes unwieldy
+   - Ask agent: "Summarize this milestone's key findings and decisions"
+   - Save summary to project docs (e.g., `docs/milestones.md`)
+   - Continue in same chat, but reference saved summary if needed
+
+---
+
+## Summary Export Option
+
+When you want a formal, persistent record:
+
+1. **After milestone completion**, ask: 
+   "Summarize this milestone's key findings, decisions, and next steps"
+
+2. **Save the summary** to a project document:
+   - `docs/milestones.md` or
+   - `docs/session-summaries.md` or
+   - A dedicated milestone document
+
+3. **Format for persistence:**
+   ```markdown
+   # Milestone: [Name] - [Date]
+   
+   ## Completed
+   - [Achievement 1]
+   - [Achievement 2]
+   
+   ## Key Decisions
+   - [Decision 1 and rationale]
+   
+   ## Next Steps
+   - [Next milestone or task]
+   ```
+
+4. **Continue in same chat** for related work, but reference saved summary when needed
+
+---
+
+## Project-Specific Workflow
+
+### For This Econometrics Agent Project
+
+Since this project involves multiple related evaluations (Hansen → Angrist → potentially more):
+
+**Continue in the same chat** because:
+- Same repository (`econometrics-agent-for-cursor`)
+- Evaluations are related (both inform same Cursor Rules)
+- Building on previous insights is valuable
+- Context about agent design is continuously relevant
+
+**Use clear milestone markers:**
+```markdown
+--- Milestone: Hansen Evaluation Complete ---
+
+[Summary or continuation]
+
+--- Starting: Angrist Evaluation ---
+
+[New work begins]
+```
+
+---
+
+## General Best Practices
+
+1. **Commit frequently** - Don't wait until milestones are complete
+2. **Use descriptive commit messages** - Make Git history readable
+3. **Document decisions** - Update relevant docs as you go
+4. **Keep context manageable** - If chat gets unwieldy, export summary
+5. **Reference previous work** - Build on what came before
+6. **Stay organized** - Clear markers and summaries help
+
+---
+
+## Agent Reminder Template
+
+When checking in on milestone status, use this friendly template:
+
+```
+**Milestone Status Check**
+
+We've just completed [milestone name]. Here are your workflow options:
+
+✅ **Continue in this chat** (recommended for related work in same project)
+   - Context is preserved
+   - Easy to reference previous decisions
+   - Best for: Next evaluation, related feature, iterative development
+
+🔄 **Start new chat** (recommended when changing projects/repos)
+   - Clean context
+   - Avoid confusion
+   - Best for: Different repository, unrelated project
+
+📝 **Export summary** (optional but helpful for complex milestones)
+   - Save to docs/milestones.md
+   - Reference later if needed
+   - Best for: Long conversations, formal documentation
+
+Would you like me to create a summary, or should we continue with [next task]?
+```

@@ -1,0 +1,386 @@
+---
+description: Reference guide for accessing Wooldridge corpus and methodology mappings
+alwaysApply: true
+---
+
+# Wooldridge Corpus Reference Guide
+
+## Overview
+
+This guide provides instructions for accessing and referencing Wooldridge's "Econometric Analysis of Cross Section and Panel Data" textbook content through the corpus system. The corpus enables the agent to retrieve Wooldridge's methodological perspectives and compare them with Hansen and Angrist approaches.
+
+## Accessing Wooldridge Perspectives
+
+### Using the Corpus Retriever
+
+The agent can access Wooldridge perspectives using the `WooldridgeRetriever` class:
+
+```python
+from src.corpus import WooldridgeRetriever
+
+# Initialize retriever (loads embeddings, index, cross-references)
+retriever = WooldridgeRetriever()
+
+# Find Wooldridge's perspective on a methodology
+perspective = retriever.find_perspective("fixed effects")
+
+# Semantic search for relevant content
+results = retriever.semantic_search("clustered standard errors panel data", top_k=5)
+
+# Cross-reference with Hansen/Angrist
+comparison = retriever.cross_reference("fixed effects")
+```
+
+### Agent Integration Functions
+
+For easier agent use, import helper functions:
+
+```python
+from src.corpus.agent_integration import (
+    get_wooldridge_perspective,
+    triangulate_methodology,
+    format_perspective_response
+)
+
+# Quick lookup
+perspective = get_wooldridge_perspective("clustered standard errors")
+
+# Full triangulation (Wooldridge + Hansen + Angrist)
+triangulation = triangulate_methodology("fixed effects")
+```
+
+## Methodology-to-Chapter Mappings
+
+### Panel Data Methods (Priority #2)
+
+**Chapter 23: Basic Linear Unobserved Effects Panel Data Models**
+- Fixed effects estimation
+- Random effects estimation
+- Within transformation
+- Hausman test
+- **Corpus query**: `retriever.find_perspective("fixed effects")`
+- **Cross-reference**: WOOLDRIDGE_EVALUATION.md:144-162
+
+**Chapter 24: Linear Models with Endogenous Regressors**
+- Panel IV estimation
+- Fixed effects IV
+- First-stage diagnostics in panels
+- **Corpus query**: `retriever.find_perspective("instrumental variables")` + panel context
+
+**Chapter 26: Attrition and Other Selection Issues**
+- Attrition testing
+- Inverse probability weighting for attrition
+- Selection correction methods
+- **Corpus query**: `retriever.find_perspective("attrition")`
+- **Cross-reference**: WOOLDRIDGE_EVALUATION.md:1472-1496
+
+### Causal Inference Methods (Priority #1)
+
+**Chapter 21: Estimating Average Treatment Effects**
+- Difference-in-differences
+- Regression discontinuity
+- Matching methods
+- Propensity score methods
+- IV for treatment effects
+- **Corpus query**: `retriever.find_perspective("treatment effects")`
+- **Cross-reference**: WOOLDRIDGE_EVALUATION.md:1498-1502
+
+**Chapter 28: Estimation of Treatment Effects with Panel Data**
+- Panel treatment effects
+- Two-way FE DiD
+- Panel IV for treatment effects
+- **Corpus query**: `retriever.find_perspective("difference-in-differences")` + panel context
+- **Cross-reference**: WOOLDRIDGE_EVALUATION.md:1504-1509
+
+### Standard Errors and Inference
+
+**Chapter 12: Time Series Methods**
+- HAC standard errors
+- Autocorrelation-consistent inference
+- **Corpus query**: `retriever.find_perspective("HAC standard errors")`
+- **Cross-reference**: WOOLDRIDGE_EVALUATION.md:325-329
+
+**Chapter 17: Limited Dependent Variables**
+- HC3 standard errors for limited dependent variables
+- Linear probability models
+- **Corpus query**: `retriever.find_perspective("HC3")`
+- **Cross-reference**: WOOLDRIDGE_EVALUATION.md:312-316
+
+**Panel Data Standard Errors (Chapter 23)**
+- Clustered standard errors with small-sample correction
+- **Corpus query**: `retriever.find_perspective("clustered standard errors")`
+- **Cross-reference**: WOOLDRIDGE_EVALUATION.md:144-162
+
+### Data Handling
+
+**Chapter 20: Stratified Sampling and Cluster Sampling**
+- Survey weights
+- Weighted estimators
+- Variable probability sampling
+- **Corpus query**: `retriever.find_perspective("survey weights")`
+- **Cross-reference**: WOOLDRIDGE_EVALUATION.md:1450-1470
+
+## Triangulation Queries
+
+### Comparing All Three Perspectives
+
+Use the triangulation system to compare Wooldridge, Hansen, and Angrist:
+
+```python
+from src.corpus.triangulation import triangulate
+
+# Full triangulation
+result = triangulate("fixed effects")
+
+# Result includes:
+# - wooldridge: Wooldridge's perspective
+# - hansen: Hansen's perspective (from evaluation doc)
+# - angrist: Angrist's perspective (from evaluation doc)
+# - agreement_level: "high", "medium", or "low"
+# - synthesis: Recommended approach combining all three
+```
+
+### When to Use Triangulation
+
+Use triangulation when:
+- User asks about methodology best practices
+- Multiple perspectives exist on a topic
+- Need to explain why we use a particular approach
+- Providing comprehensive guidance on a method
+
+### Triangulation Response Format
+
+When presenting triangulated results:
+
+1. **Show all three perspectives** when relevant
+2. **Indicate agreement level**: "All three agree...", "Wooldridge and Hansen agree...", etc.
+3. **Provide synthesis**: "Our approach synthesizes..."
+4. **Cite sources**: Include chapter/page references when available
+
+Example format:
+```
+**Standard Errors for Panel Data:**
+
+- **Wooldridge (Chapter 23)**: Recommends clustered SE with small-sample correction
+- **Hansen**: Uses robust SE, validates clustering when appropriate
+- **Angrist/MHE**: Uses clustered SE when relevant (Moulton correction)
+
+**Synthesis**: All three agree on clustering for panel data. We use Wooldridge's approach (clustered with small-sample correction) as default, validated by Hansen's modern practices.
+```
+
+## Citation Format
+
+### In Agent Responses
+
+When referencing Wooldridge in agent responses:
+
+1. **Methodology discussions**: Cite chapter and section
+   - Format: "Wooldridge (Chapter 23, Section 23.2) recommends..."
+   - Include corpus query result when available
+
+2. **Specific recommendations**: Include page references if available
+   - Format: "Wooldridge (Chapter 23, p. 501) states..."
+   - Use corpus metadata for page numbers
+
+3. **Cross-references**: Link to evaluation documents
+   - Format: "See WOOLDRIDGE_EVALUATION.md:144-162 for comparison with Hansen/Angrist"
+
+4. **Corpus queries**: Reference when using corpus
+   - Format: "According to Wooldridge's textbook (retrieved via corpus)..."
+   - Include relevance score if semantic search was used
+
+### In Code Comments
+
+When referencing Wooldridge in code:
+
+```python
+# Wooldridge (Chapter 23): Clustered SE with small-sample correction
+# Default in linearmodels matches Wooldridge's approach
+# See: WOOLDRIDGE_EVALUATION.md:144-162
+```
+
+## Cross-Reference Patterns
+
+### Wooldridge → Hansen → Angrist
+
+When discussing a methodology:
+
+1. **Start with Wooldridge**: Query corpus for Wooldridge's perspective
+2. **Compare with Hansen**: Reference HANSEN_EVALUATION.md
+3. **Compare with Angrist**: Reference ANGRIST_EVALUATION.md
+4. **Synthesize**: Provide combined recommendation
+
+### Evaluation Document Cross-References
+
+Common cross-reference patterns:
+
+- **Panel Data**: WOOLDRIDGE_EVALUATION.md:144-162 (clustered SE)
+- **Treatment Effects**: WOOLDRIDGE_EVALUATION.md:1498-1502
+- **Standard Errors**: WOOLDRIDGE_EVALUATION.md:121-140 (context-appropriate)
+- **Attrition**: WOOLDRIDGE_EVALUATION.md:1472-1496
+- **Survey Weights**: WOOLDRIDGE_EVALUATION.md:1450-1470
+
+## When to Reference Wooldridge
+
+### Always Reference When:
+
+1. **Panel data methods**: Wooldridge is the panel data expert (Priority #2)
+2. **Standard error selection**: Context-appropriate SE guidance
+3. **Attrition handling**: Wooldridge Chapter 26 is authoritative
+4. **Survey weights**: Wooldridge Chapter 20 is comprehensive
+5. **Small-sample corrections**: Wooldridge emphasizes this for panels
+
+### Consider Referencing When:
+
+1. **Treatment effects**: Wooldridge Chapter 21/28 provides panel perspective
+2. **IV methods**: Wooldridge provides panel IV expertise
+3. **Data handling**: Wooldridge's explicit practices
+4. **Methodology questions**: User asks "what does Wooldridge say about X?"
+
+### Don't Over-Reference:
+
+- Basic OLS (unless discussing SE choice)
+- Simple diagnostics (unless Wooldridge has specific guidance)
+- Topics outside Wooldridge's expertise (time series, advanced topics)
+
+## Corpus Query Best Practices
+
+### Semantic Search
+
+Use semantic search for:
+- Flexible queries about concepts
+- Finding relevant sections when exact methodology name unknown
+- Exploring related topics
+
+```python
+# Good: Flexible query
+results = retriever.semantic_search("how to handle missing data in panels", top_k=5)
+
+# Good: Concept exploration
+results = retriever.semantic_search("within transformation mechanics", top_k=3)
+```
+
+### Topic Lookup
+
+Use topic lookup for:
+- Known methodology names
+- Direct access to indexed content
+- Fast retrieval of common topics
+
+```python
+# Good: Direct lookup
+topic_info = retriever.lookup_topic("fixed effects")
+
+# Good: Priority area lookup
+priority_info = retriever.lookup_topic("panel_data")
+```
+
+### Perspective Finding
+
+Use perspective finding for:
+- Wooldridge's specific recommendations
+- Methodological positions
+- Best practice guidance
+
+```python
+# Good: Finding recommendations
+perspective = retriever.find_perspective("clustered standard errors")
+
+# Good: Getting Wooldridge's view
+perspective = retriever.find_perspective("attrition")
+```
+
+## Integration with Agent Rules
+
+### Rule File References
+
+When rules mention Wooldridge:
+- Include corpus query examples
+- Reference specific chapters
+- Link to evaluation documents
+- Provide synthesis guidance
+
+### Agent Behavior
+
+The agent should:
+- Automatically query corpus for methodology questions
+- Present Wooldridge perspective alongside Hansen/Angrist
+- Synthesize perspectives when they differ
+- Cite sources appropriately
+
+### Response Patterns
+
+Standard response patterns:
+
+1. **Methodology question**: Query corpus → Compare with evaluations → Synthesize
+2. **Best practice question**: Triangulate → Show agreement/disagreement → Recommend
+3. **Implementation question**: Reference Wooldridge → Show code example → Explain rationale
+
+## Corpus Data Location
+
+- **Embeddings**: `data/corpus/wooldridge_embeddings/embeddings.json`
+- **Index**: `data/corpus/wooldridge_index/index.json`
+- **Cross-references**: `data/corpus/wooldridge_index/cross_references.json`
+- **Analysis**: `data/corpus/wooldridge_index/analysis.json`
+
+## Building the Corpus
+
+If corpus needs to be rebuilt:
+
+```bash
+python -m src.corpus.cli build
+```
+
+This will:
+1. Analyze all markdown files in `docs/wooldridge_extracts/`
+2. Build topic indices
+3. Generate embeddings
+4. Create cross-references
+
+## Examples
+
+### Example 1: Panel Data Clustering
+
+**User asks**: "Should I cluster standard errors in panel data?"
+
+**Agent response** (using corpus):
+```python
+# Query corpus
+perspective = retriever.find_perspective("clustered standard errors")
+comparison = retriever.cross_reference("clustered standard errors")
+
+# Format response
+"""
+Yes, you should cluster standard errors in panel data. 
+
+**Wooldridge (Chapter 23)**: Recommends clustered SE with small-sample correction for panel data. This is the default in linearmodels and matches Stata's approach.
+
+**Hansen**: Validates clustering when appropriate, uses robust SE as default but supports clustering.
+
+**Angrist/MHE**: Uses clustered SE when relevant (Moulton correction).
+
+**Our approach**: We default to clustered SE with small-sample correction (Wooldridge's approach), validated by Hansen's modern practices.
+
+See WOOLDRIDGE_EVALUATION.md:144-162 for detailed comparison.
+"""
+```
+
+### Example 2: Attrition Handling
+
+**User asks**: "How should I handle attrition in my panel data?"
+
+**Agent response**:
+```python
+# Query corpus
+perspective = retriever.find_perspective("attrition")
+results = retriever.semantic_search("attrition testing panel data", top_k=3)
+
+# Format response with Wooldridge Chapter 26 guidance
+```
+
+## Notes
+
+- Corpus queries may take a moment (embeddings are loaded on first use)
+- Semantic search returns relevance scores (use top_k appropriately)
+- Cross-references link to evaluation documents for detailed comparisons
+- Always verify corpus results against evaluation documents for accuracy

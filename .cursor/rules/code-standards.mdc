@@ -1,0 +1,200 @@
+---
+description: Code style and quality standards for Python development
+alwaysApply: true
+---
+
+# Code Standards
+
+## Python Style Guide
+- Follow **PEP 8** strictly
+- Maximum line length: **100 characters** (not 79)
+- Use 4 spaces for indentation (no tabs)
+- Use descriptive variable names following snake_case convention
+- Class names use PascalCase
+- Constants use UPPER_SNAKE_CASE
+
+## Type Hints
+- Add type hints to all function signatures
+- Use `typing` module for complex types (Optional, List, Dict, Tuple)
+- Type hints should be included for:
+  - Function parameters
+  - Return values
+  - Class attributes (when appropriate)
+
+Example:
+```python
+from typing import Optional, List, Tuple
+import pandas as pd
+import numpy as np
+
+def estimate_ols(
+    data: pd.DataFrame,
+    outcome: str,
+    covariates: List[str],
+    robust_se: bool = True
+) -> Tuple[np.ndarray, np.ndarray, dict]:
+    """Estimate OLS regression with robust standard errors."""
+    pass
+```
+
+## Docstrings
+- Use Google-style docstrings for all public functions and classes
+- Include:
+  - Brief description
+  - Args section with types and descriptions
+  - Returns section with types and descriptions
+  - Raises section if applicable
+  - Examples for complex functions
+
+Example:
+```python
+def difference_in_differences(
+    data: pd.DataFrame,
+    outcome: str,
+    treatment: str,
+    time: str,
+    unit: str
+) -> dict:
+    """Estimate difference-in-differences treatment effect.
+    
+    Args:
+        data: DataFrame containing panel data
+        outcome: Name of outcome variable
+        treatment: Name of treatment indicator variable
+        time: Name of time period variable
+        unit: Name of unit identifier variable
+        
+    Returns:
+        Dictionary containing:
+            - coefficients: Estimated coefficients
+            - std_errors: Standard errors
+            - pvalues: P-values
+            - diagnostics: Diagnostic test results
+            
+    Raises:
+        ValueError: If required columns are missing
+    """
+    pass
+```
+
+## Import Organization
+1. Standard library imports
+2. Third-party imports (pandas, numpy, statsmodels, etc.)
+3. Local application imports
+
+Use absolute imports. Sort imports alphabetically within each group.
+
+```python
+# Standard library
+from typing import List, Optional
+import os
+
+# Third-party
+import numpy as np
+import pandas as pd
+from statsmodels.regression.linear_model import OLS
+
+# Local
+from src.diagnostics import run_diagnostics
+```
+
+## File Naming
+- Use snake_case for all Python files
+- Descriptive names that indicate purpose
+- Example: `fixed_effects.py`, `diff_in_diff.py`, `parallel_trends_test.py`
+
+## Error Handling
+- Use specific exception types (ValueError, TypeError, KeyError)
+- Provide meaningful error messages
+- Log errors appropriately for debugging
+- Validate inputs early in functions
+
+## Code Organization
+- Keep functions focused on a single responsibility
+- Maximum function length: ~50 lines (may exceed for complex algorithms)
+- Extract complex logic into helper functions
+- Use constants for magic numbers and repeated strings
+
+## Virtual Environment Best Practices
+
+**CRITICAL: Always use virtual environments for this project**
+
+### Why Virtual Environments Are Required
+
+This project has specific dependency versions that may conflict with other projects:
+- pandas >= 2.0.0
+- statsmodels >= 0.14.0
+- linearmodels >= 5.0.0
+
+Without a virtual environment, you risk:
+- Version conflicts with other projects
+- Irreproducible results across machines
+- System-wide package corruption
+- Difficulty rolling back changes
+
+### Setup Reminders for Agents
+
+**When helping users set up or work with this project:**
+
+1. **Check for active virtual environment:**
+   ```bash
+   # Check if venv is active
+   which python  # Should point to venv/bin/python
+   ```
+
+2. **If no venv detected, remind user to activate:**
+   ```bash
+   source venv/bin/activate  # macOS/Linux
+   venv\Scripts\activate     # Windows
+   ```
+
+3. **If venv doesn't exist, guide user through setup:**
+   - Recommend using `./setup.sh` (macOS/Linux) or `setup.bat` (Windows)
+   - Or guide through manual creation with `python3 -m venv venv`
+
+4. **Before installing packages, ensure venv is active:**
+   - Never run `pip install` without venv active
+   - Never suggest `pip install --user` (defeats purpose of venv)
+   - Never suggest `sudo pip install` (very bad practice)
+
+### Development Workflow
+
+**Standard workflow when working on this project:**
+
+```bash
+# 1. Activate venv (do this FIRST, every session)
+source venv/bin/activate
+
+# 2. Verify correct Python
+which python  # Should be .../venv/bin/python
+
+# 3. Install/update dependencies if needed
+pip install -r requirements.txt
+
+# 4. Work on code, run analyses, etc.
+python scripts/my_analysis.py
+pytest tests/
+
+# 5. Deactivate when done
+deactivate
+```
+
+### Common Virtual Environment Mistakes
+
+**Agents should watch for and prevent:**
+
+1. **Running code without venv active** - Results may differ due to wrong package versions
+2. **Installing packages globally** - Pollutes system Python
+3. **Committing venv/ to git** - Already in .gitignore, but remind users never to commit it
+4. **Using wrong Python version** - Ensure Python 3.10+ is used for venv creation
+5. **Not using editable install** - Should run `pip install -e .` for development
+
+### Agent Checklist
+
+Before running any analysis or suggesting package installations:
+
+- [ ] Check if virtual environment is active
+- [ ] Verify Python version is 3.10+
+- [ ] Confirm required packages are installed
+- [ ] If not, guide user through setup process (use setup.sh/setup.bat)
+- [ ] Never proceed with analysis if environment isn't properly set up

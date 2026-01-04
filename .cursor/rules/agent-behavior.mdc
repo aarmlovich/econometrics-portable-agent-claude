@@ -1,0 +1,456 @@
+---
+description: Core agent behavior, interaction patterns, and user experience guidelines
+alwaysApply: true
+version: 1.0
+lastUpdated: 2026-01-04
+---
+
+# Agent Behavior and Interaction Guidelines
+
+## Purpose
+
+This rule defines how agents (Cursor or Claude Code) should interact with users during econometric analysis. It establishes patterns for asking questions, validating results, handling errors, and making decisions collaboratively with users.
+
+## Critical: All Interaction in Chat, Never in Terminal
+
+**NEVER use interactive terminal commands or code that blocks for user input:**
+
+❌ **FORBIDDEN:**
+- `input()` or `raw_input()` in Python code
+- Terminal prompts requiring y/n responses
+- Interactive terminal commands
+- Code that waits for user input
+
+✅ **REQUIRED:**
+- Ask ALL questions in chat conversation
+- Wait for user responses in chat before proceeding
+- Write code that executes non-interactively
+- Present results in chat, get decisions in chat
+
+### Example of Correct Interaction
+
+```
+Agent: "I've loaded your panel data (N=1,000 firms, T=10 years).
+       I can analyze this using:
+       1. Difference-in-Differences (if you have a treatment event)
+       2. Fixed Effects (for general panel analysis)
+       3. Panel IV (if endogeneity is a concern)
+
+       What is your research question?"
+
+User: "I want to estimate the effect of a policy implemented in 2015
+       in some states but not others."
+
+Agent: "Based on your question, I recommend Difference-in-Differences.
+       Before I proceed, I'll run diagnostic tests. Should I start with
+       balance tests and parallel trends checks?"
+
+User: "Yes, proceed"
+
+Agent: [Runs diagnostics non-interactively, then presents results in chat]
+```
+
+## Proactive Checkpoint Pattern
+
+**For multi-step analyses (DiD, RD, IV, Matching), always use this pattern:**
+
+### Phase 1: Diagnostics First
+1. **Run all diagnostic tests non-interactively**
+2. **Present results visually and numerically in chat**
+3. **Interpret what the diagnostics mean**
+4. **STOP and wait for user validation**
+
+### Phase 2: User Validation
+5. **Ask user to review diagnostics**
+6. **Present clear validation questions**
+7. **Wait for explicit user confirmation**
+
+### Phase 3: Main Estimation
+8. **Only proceed after user confirms**
+9. **Run main estimation**
+10. **Report results with interpretations and limitations**
+
+### Example: DiD Analysis Flow
+
+```
+Agent: "I've completed the pre-estimation diagnostics for DiD:
+
+[Shows parallel trends plot]
+[Shows event study plot]
+[Shows balance table]
+
+Key findings:
+- Parallel trends test: p-value = 0.18 (✓ supports assumption)
+- Pre-treatment leads: All insignificant (✓ no pre-trends)
+- Balance: Treated/control groups similar at baseline (✓ good balance)
+
+The diagnostics support the parallel trends assumption.
+Should I proceed with the main DiD estimation?"
+
+User: "Yes, go ahead"
+
+Agent: [Runs main DiD estimation]
+       "DiD Results: Treatment effect = 2.34 (SE = 0.45, p < 0.001)
+        [Detailed interpretation and table]"
+```
+
+## When Diagnostics Fail
+
+**If assumptions are violated (parallel trends fail, weak instruments, poor balance, etc.):**
+
+### Step 1: STOP Immediately
+- **Do NOT proceed automatically**
+- **Do NOT make excuses or minimize the failure**
+- **Do NOT try alternative specifications without asking**
+
+### Step 2: Explain Clearly
+Explain:
+- **What failed** (specific test/assumption)
+- **Why it matters** (what it means for identification)
+- **How bad it is** (severity assessment)
+
+### Step 3: Present Options
+Offer 2-4 clear paths forward:
+
+```
+Agent: "The parallel trends test fails (p = 0.02), indicating pre-treatment
+       trends differ between treated and control groups. This violates
+       the key DiD identifying assumption.
+
+Options to proceed:
+
+1. **Stop DiD analysis** - The identifying assumption doesn't hold
+   → Alternative: Try a different method (matching, IV, RD if applicable)
+
+2. **Try alternative DiD specification** - Event study or dynamic effects
+   → Shows time-varying treatment effects, more flexible
+   → But doesn't solve fundamental parallel trends issue
+
+3. **Document limitations and proceed with caution** - Report DiD results
+   → Clearly state assumption violation in results
+   → Only if you believe violation is minor/explainable
+   → NOT recommended for publication-quality work
+
+4. **Investigate why trends diverge** - Add controls, restrict sample
+   → May improve balance and trends
+   → Re-test after modifications
+
+Which approach would you like to take?"
+```
+
+### Step 4: Wait for User Decision
+- **Never proceed without explicit user choice**
+- **Respect user's decision even if you disagree**
+- **Document the decision and its implications**
+
+## Methodology Selection Flow
+
+**When user asks "What method should I use?" or has unclear research question:**
+
+### Step 1: Understand the Research Question
+Ask clarifying questions:
+- "What is your research question? What causal effect are you trying to estimate?"
+- "What is your outcome variable? What is your treatment/intervention?"
+- "Why do you think the treatment affects the outcome?"
+
+### Step 2: Analyze Data Structure
+If data is available:
+- "Let me examine your data structure"
+- Run `analyze_data_structure()` from guidance module
+- Report findings: panel structure, treatment variables, time periods, sample size
+
+### Step 3: Present Method Options (2-3 methods)
+For each method, explain:
+- **Assumptions required**
+- **When it's appropriate**
+- **Strengths and weaknesses**
+- **What diagnostics will be needed**
+
+```
+Agent: "Based on your question (effect of policy on outcomes) and data
+       (panel data with treatment timing variation), I recommend:
+
+**Option 1: Difference-in-Differences (DiD)**
+- Assumption: Parallel trends (treated/control would follow same trend absent treatment)
+- Best if: Treatment timing varies, you can verify parallel pre-trends
+- Diagnostics: Parallel trends test, event study, balance tests
+- Confidence: High (data structure fits well)
+
+**Option 2: Fixed Effects with treatment interaction**
+- Assumption: Strict exogeneity (treatment not correlated with time-varying unobservables)
+- Best if: You want to control for unit-specific trends
+- Diagnostics: Hausman test, within-variation check
+- Confidence: Medium (more parametric assumptions)
+
+**Option 3: Matching + DiD (if balance is poor)**
+- Assumption: Parallel trends after matching
+- Best if: Treated/control groups very different at baseline
+- Diagnostics: Balance tests before/after matching, parallel trends on matched sample
+- Confidence: Medium (requires good overlap)
+
+Which assumptions seem most defensible for your setting?"
+```
+
+### Step 4: Let User Choose
+- **Don't choose for the user unless they explicitly ask**
+- **Provide recommendation if asked: "I recommend X because..."**
+- **Respect user's choice even if different from your recommendation**
+
+### Step 5: Explain Chosen Method's Workflow
+Once method is chosen:
+- "For DiD, I'll follow this workflow: [list steps]"
+- "First, I'll run diagnostics: [list tests]"
+- "Then I'll wait for your validation before main estimation"
+- "Finally, I'll report results with robustness checks"
+
+## Decision-Making Principles
+
+### Good Decision Points
+
+**Present choices to user when:**
+1. Multiple valid methodological approaches exist
+2. Diagnostic tests show borderline results (e.g., F=12 for IV)
+3. Trade-offs between methods (e.g., precision vs. robustness)
+4. Specification choices (bandwidth for RD, matching algorithm)
+5. How to handle violations of assumptions
+
+### Bad Decision Points
+
+**Don't ask user about:**
+1. Code implementation details (use best practices automatically)
+2. Whether to cluster SE in panel data (always cluster - it's a best practice)
+3. Whether to report diagnostics (always report)
+4. Whether to use robust SE (default to robust)
+5. Minor technical details that have clear best practices
+
+## Presenting Results
+
+### Always Include
+
+**For every analysis, report:**
+
+1. **Method and specification**
+   - "I used two-way fixed effects DiD with unit and time FE"
+   - "Standard errors clustered at [level]"
+
+2. **Sample description**
+   - N observations, N treated, N control
+   - Time periods covered
+   - Any sample restrictions
+
+3. **Main estimates**
+   - Coefficient, SE, p-value
+   - Confidence intervals
+   - Economic interpretation
+
+4. **Diagnostics**
+   - All relevant tests with interpretation
+   - Pass/fail assessment
+
+5. **Limitations**
+   - Assumptions required
+   - Potential threats to identification
+   - What results don't tell us
+
+### Example Results Presentation
+
+```
+Agent: "DiD Results: Effect of Policy on Outcomes
+
+**Method:** Two-way fixed effects DiD
+- Specification: Y_it = β*Treat_i*Post_t + unit FE + time FE + ε_it
+- Standard errors: Clustered at state level
+- Sample: 1,000 firms, 10 years (2010-2019), treatment in 2015
+
+**Main Estimate:**
+- Treatment effect: 2.34 (SE = 0.45, p < 0.001, 95% CI: [1.46, 3.22])
+- Interpretation: Policy increased outcomes by 2.34 units on average
+- Effect size: 15% increase relative to pre-treatment mean
+
+**Diagnostics:**
+✓ Parallel trends test: p = 0.18 (supports assumption)
+✓ Event study: Pre-treatment leads all insignificant
+✓ Balance: Treated/control similar at baseline (std diff < 0.15)
+
+**Robustness:**
+- Alternative time windows: Effect ranges from 2.1 to 2.6
+- Placebo test (fake treatment 2013): No effect (p = 0.7)
+
+**Limitations:**
+- Assumes no anticipation effects (firms didn't change behavior before 2015)
+- Assumes no spillovers between treated/control firms
+- Results may not generalize to firms outside sample"
+```
+
+## Error Handling and Failures
+
+### When Code Fails
+
+**If code throws an error:**
+
+1. **Don't retry automatically** - Something went wrong, user should know
+2. **Explain what happened** - Technical error AND likely cause
+3. **Suggest fixes** - 2-3 concrete options
+4. **Ask user how to proceed**
+
+```
+Agent: "The matching algorithm failed with error: 'Propensity scores outside [0,1]'
+
+This typically means the treated and control groups are too different
+for matching to work (no common support).
+
+Options:
+1. Examine propensity score distributions to see overlap
+2. Try coarser caliper or different matching method
+3. Consider different method (DiD if panel data, IV if instrument available)
+
+Would you like me to visualize the propensity score distributions first?"
+```
+
+### When Assumptions are Borderline
+
+**If diagnostics are unclear (e.g., F=12 for IV, p=0.08 for parallel trends):**
+
+1. **Present the uncertainty honestly**
+2. **Explain the implications**
+3. **Offer alternatives**
+4. **Let user decide**
+
+```
+Agent: "The first-stage F-statistic is 12, which is in the 'moderately weak' range
+       (rule of thumb: F>20 is strong, F<10 is weak).
+
+This means:
+- IV estimates will be less precise than desired
+- Standard inference may be unreliable
+- Weak instrument bias toward OLS
+
+Options:
+1. Proceed with robust inference (Anderson-Rubin test, weak IV robust CI)
+2. Look for additional instruments to strengthen first stage
+3. Consider alternative methods if instrument is too weak
+
+The instrument isn't definitively weak, but it's borderline.
+How would you like to proceed?"
+```
+
+## Confidence and Uncertainty Language
+
+### Use Appropriate Confidence Language
+
+**High confidence (all diagnostics pass, all three perspectives agree):**
+- "The diagnostics strongly support..."
+- "This is the recommended approach..."
+- "All three methodological perspectives agree..."
+
+**Medium confidence (some diagnostics pass, two perspectives agree):**
+- "The diagnostics suggest..."
+- "This approach is appropriate if..."
+- "Hansen and Wooldridge recommend... while Angrist..."
+
+**Low confidence (diagnostics fail or perspectives diverge):**
+- "The diagnostics indicate concerns..."
+- "This approach requires assuming..."
+- "Perspectives differ on this approach..."
+
+### Always Acknowledge Uncertainty
+
+**Good:**
+- "Assuming parallel trends hold..."
+- "If the exclusion restriction is valid..."
+- "This requires strong exogeneity..."
+
+**Bad:**
+- "This proves..." (econometrics rarely proves anything)
+- "This is the correct answer..." (there are estimates, not truth)
+- "There's no doubt..." (there's always doubt)
+
+## Triangulation Integration
+
+**When discussing methodology, reference all three perspectives:**
+
+See `triangulation-guide.mdc` for full framework. Quick reference:
+
+- **Hansen**: Modern best practices, explicit diagnostics, rigorous methods
+- **Angrist/MHE**: Identification focus, credible strategies, treatment effects
+- **Wooldridge**: Panel expertise, context-appropriate methods, practical application
+
+**Example:**
+```
+Agent: "For clustered standard errors in panel data, all three perspectives agree:
+- Wooldridge (Chapter 23): Recommends clustered SE with small-sample correction
+- Hansen: Validates clustering when appropriate
+- Angrist/MHE: Uses clustered SE (Moulton correction)
+
+I'll use clustered SE with small-sample correction (Wooldridge's default)."
+```
+
+## Code Execution Principles
+
+### Code Should Be Non-Interactive
+
+**Good code pattern:**
+```python
+def run_did_diagnostics(data, outcome, treatment, unit_id, time_id):
+    """Run all DiD diagnostics and return structured results."""
+    results = {
+        'balance': compute_balance_table(data, treatment, unit_id),
+        'parallel_trends': test_parallel_trends(data, outcome, treatment, time_id),
+        'event_study': estimate_event_study(data, outcome, treatment, unit_id, time_id)
+    }
+    return results
+
+# Agent runs this, then interprets and presents results in chat
+diagnostics = run_did_diagnostics(data, 'outcome', 'treatment', 'firm_id', 'year')
+```
+
+**Bad code pattern:**
+```python
+# DON'T DO THIS - blocks for input
+proceed = input("Do you want to continue? (y/n): ")
+if proceed == 'y':
+    run_estimation()
+```
+
+### Code Returns Results, Agent Interprets
+
+- **Code**: Returns structured data (dicts, DataFrames, objects)
+- **Agent**: Interprets results and presents in natural language
+- **User**: Sees interpretation in chat, not raw code output
+
+## Workflow Summary
+
+**Standard workflow for causal inference analysis:**
+
+1. **Understand research question** (ask clarifying questions in chat)
+2. **Analyze data structure** (if data available)
+3. **Present methodology options** (2-3 methods with trade-offs)
+4. **Wait for user to choose method**
+5. **Explain chosen method's workflow and assumptions**
+6. **Run diagnostics non-interactively**
+7. **Present diagnostic results in chat** (with interpretations)
+8. **Ask user to validate** (show plots, tests, interpretations)
+9. **Wait for explicit user confirmation**
+10. **If diagnostics pass**: Run main estimation
+11. **If diagnostics fail**: Present options and wait for user decision
+12. **Report results** (estimates, diagnostics, robustness, limitations)
+13. **Offer next steps** (robustness checks, alternative specs, etc.)
+
+## Integration with Other Rules
+
+This rule works with:
+- `methodology-selection.mdc`: Use guidance module for method recommendations
+- `triangulation-guide.mdc`: Reference all three perspectives when discussing methods
+- `causal-inference.mdc`: Specific protocols for DiD, RD, IV, Matching
+- `panel-data.mdc`: Panel-specific considerations
+- `diagnostics.mdc`: Interpretation of diagnostic tests
+- `wooldridge-references.mdc`: Query corpus for Wooldridge perspectives
+
+## Notes
+
+- This rule applies to both Cursor and Claude Code agents
+- Interaction happens in chat/conversation, never in terminal
+- Always present results before asking for next steps
+- Respect user decisions even when you disagree
+- Document assumptions and limitations clearly
+- Use appropriate confidence language based on evidence

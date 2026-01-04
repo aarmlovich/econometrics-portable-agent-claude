@@ -1,0 +1,550 @@
+---
+description: Rules for causal inference methods - Priority #1
+globs:
+  - "**/causal/**/*.py"
+  - "**/diff_in_diff.py"
+  - "**/regression_discontinuity.py"
+  - "**/matching.py"
+  - "**/instrumental_variables.py"
+---
+
+# Causal Inference Methods (Priority #1)
+
+## Critical: User Interaction Protocol
+
+**ALL user interaction must happen in CURSOR CHAT, NOT in terminal commands or code:**
+
+- **NEVER use `input()`, `raw_input()`, or any terminal-blocking prompts in code**
+- **NEVER create commands that prompt for y/n or other responses in the terminal**
+- All questions, confirmations, and user choices must be handled through Cursor chat messages
+- Code functions should only return estimation results, diagnostics, etc.
+- The agent asks questions in chat, waits for user response in chat, then proceeds based on response
+- If you need user input, ask in chat conversation, NOT in terminal commands
+
+This prevents commands from blocking and ensures smooth interaction flow.
+
+## General Principles
+- **Always document identification strategy** - What variation identifies the causal effect?
+- **Include robustness checks** - Alternative specifications, placebo tests
+- **Report diagnostic tests** - Balance tests, parallel trends, first-stage statistics
+- **Discuss threats to identification** - Selection, confounding, spillovers
+- **Panel data compatibility** - DiD, IV, and matching methods work with panel data (see Panel Treatment Effects below)
+
+**Methodological Foundation:** Our causal inference methods synthesize best practices from:
+- **Identification focus (Angrist/MHE)**: Emphasis on credible identification strategies (DiD, RD, IV, matching)
+- **Rigorous methods (Hansen)**: Explicit diagnostic requirements and proper statistical inference
+- **Panel expertise (Wooldridge)**: Panel treatment effects methods and context-appropriate standard errors
+
+**Wooldridge References:**
+- **Chapter 21**: Estimating Average Treatment Effects (DiD, RD, Matching, IV for treatment effects)
+- **Chapter 28**: Estimation of Treatment Effects with Panel Data (panel treatment effects, two-way FE DiD)
+- **Corpus Query**: Use `from src.corpus.agent_integration import get_wooldridge_perspective; get_wooldridge_perspective("treatment effects")` to retrieve Wooldridge's detailed guidance
+- **Cross-Reference**: See WOOLDRIDGE_EVALUATION.md:1498-1509 for comparison with Hansen/Angrist on treatment effects
+
+## Difference-in-Differences (DiD)
+
+**Wooldridge Reference: Chapter 21 (Treatment Effects) and Chapter 28 (Panel Treatment Effects)**
+
+Wooldridge covers DiD comprehensively, emphasizing panel treatment effects and two-way fixed effects specifications. Our approach synthesizes Wooldridge's panel expertise with Angrist's identification focus and Hansen's rigorous methods.
+
+**Corpus Query**: `get_wooldridge_perspective("difference-in-differences")` or `semantic_search_wooldridge("difference in differences panel data")` for Wooldridge's guidance.
+
+### Requirements
+1. **Balance tests** - Compare treated/control groups pre-treatment
+   - Report means and standard deviations
+   - Test for statistically significant differences
+   - Standardized differences (std diff < 0.25 is good)
+
+2. **Parallel trends test** - Critical for DiD validity
+   - Visualize trends pre-treatment
+   - Test for differential trends statistically
+   - Event study specification to check pre-trends
+
+3. **Event study** - Recommended specification
+   - Estimate leads and lags relative to treatment
+   - Check pre-trends (leads should be insignificant)
+   - Report dynamic treatment effects
+
+4. **Standard errors** - Always cluster at treatment level
+   - Cluster at unit level for panel data
+   - Cluster at treatment group level for group-level treatment
+
+### Implementation Checklist
+- [ ] Pre-treatment balance table
+- [ ] Parallel trends plot
+- [ ] Parallel trends test (p-value)
+- [ ] Event study specification
+- [ ] Main DiD estimate with clustered SE
+- [ ] Robustness: alternative time windows
+- [ ] Placebo: fake treatment dates
+
+### Post-Parallel Trends Validation Checkpoint
+
+**After running parallel trends test and event study, but BEFORE proceeding with main DiD estimation:**
+
+1. **Display diagnostic results to the user:**
+   - Show parallel trends plot (pre-treatment trends for treated vs control)
+   - Present event study plot (coefficients for leads/lags)
+   - Report parallel trends test statistic and p-value
+   - Display pre-treatment balance table
+
+2. **Ask the user validation questions:**
+   - "Please review the parallel trends plot and event study above. Do the pre-treatment trends appear parallel?"
+   - "Do the pre-treatment coefficients (leads) in the event study appear close to zero and statistically insignificant?"
+   - "Does the parallel trends test support the identifying assumption? (p-value should be > 0.05 for validity)"
+   - "Are there any concerns about the identification strategy based on these diagnostics?"
+
+3. **Based on results and user response:**
+   - **If parallel trends supported (p > 0.05, visual parallel):** Present results to user, ask: "Parallel trends assumption appears valid. Do you want to proceed with DiD estimation?" **WAIT FOR USER CONFIRMATION** before running main DiD estimation.
+   - **If parallel trends fail (p < 0.05, visual divergence):** "Parallel trends test fails (p=[value]). This suggests the identifying assumption may not hold. Recommended actions:
+     a) Consider alternative specifications (event study, dynamic effects)
+     b) Consider alternative methods (RD, IV, matching if applicable)
+     c) Document limitations and proceed with caution
+     How would you like to proceed?"
+   - **CRITICAL: STOP main DiD estimation if parallel trends assumption fails and user does not explicitly approve proceeding**
+   - **ALWAYS wait for user confirmation before proceeding to main estimation - DO NOT proceed automatically even if tests pass**
+
+### Example Specification
+```python
+# Two-way fixed effects specification
+# Y_it = α + β*Treat_i*Post_t + γ_i + δ_t + ε_it
+
+# Include:
+# - Unit fixed effects (γ_i)
+# - Time fixed effects (δ_t)
+# - Treatment × Post interaction (β)
+# - Clustered standard errors at unit level
+```
+
+### When NOT to Use DiD
+
+**Do NOT use DiD if:**
+
+1. **Only one time period** - DiD requires pre- and post-treatment periods
+   - Need: Multiple time periods before and after treatment
+   - Alternative: Cross-sectional matching, IV, or RD if applicable
+
+2. **Treatment is gradual or continuous** - DiD requires a clear treatment event
+   - Problem: No clear "post" period to compare
+   - Alternative: Dose-response models, continuous treatment DiD, or panel IV
+
+3. **Pre-treatment trends diverge** - Parallel trends assumption violated
+   - Problem: Treated and control groups on different trajectories
+   - Alternative: Matching + DiD, synthetic control, or methods that don't require parallel trends
+
+4. **Selection on anticipated gains** - Units choose treatment based on expected benefits
+   - Problem: Violates parallel trends (units that expect larger gains select in)
+   - Alternative: Panel IV if instrument available, or document limitation
+
+5. **Spillover effects between units** - Treatment affects control group
+   - Problem: Control group is contaminated, not a valid counterfactual
+   - Alternative: Spatial econometrics, network methods, or isolate unaffected control group
+
+6. **Staggered treatment with heterogeneous effects** - Treatment timing varies AND effects differ
+   - Problem: Two-way FE DiD can give negative weights, biased estimates
+   - Alternative: Modern staggered DiD methods (Callaway & Sant'Anna, Sun & Abraham)
+
+7. **Anticipation effects** - Units change behavior before treatment
+   - Problem: Violates parallel trends before official treatment date
+   - Alternative: Model anticipation explicitly or shift treatment date earlier
+
+8. **Only treated units (no control group)** - Everyone gets treated eventually
+   - Problem: No counterfactual for comparison
+   - Alternative: Synthetic control, event study (if variation in timing), or interrupted time series
+
+### Common DiD Mistakes
+
+1. **Forgetting to cluster standard errors** - Always cluster at treatment level (unit or group)
+2. **Using only Post dummy** - Need treatment × post interaction, not just post dummy
+3. **Not testing parallel trends** - This is THE critical assumption - must test
+4. **Treating early-treated as controls** - In staggered DiD, this biases estimates
+5. **Ignoring treatment effect heterogeneity** - Can lead to negative weights in TWFE
+6. **Including time-varying controls** - Can bias DiD if they're affected by treatment
+7. **Not visualizing trends** - Always plot treated vs. control trends over time
+
+## Regression Discontinuity (RD)
+
+### Requirements
+1. **Bandwidth selection** - Use data-driven methods
+   - Cross-validation (MSE or CCT)
+   - Report multiple bandwidths for robustness
+   - Show results are not sensitive to bandwidth
+
+2. **Polynomial order** - Typically linear or quadratic
+   - Test sensitivity to polynomial order
+   - Report local polynomial (e.g., triangular kernel)
+
+3. **Bandwidth robustness** - Report results for:
+   - Optimal bandwidth
+   - 0.5 × optimal bandwidth
+   - 1.5 × optimal bandwidth
+
+4. **Visualization** - Always include:
+   - Scatterplot with bins
+   - Fitted lines on both sides of cutoff
+   - Confidence intervals
+
+5. **Manipulation test** - Check for bunching at cutoff
+   - Density test (McCrary test)
+   - Report p-value for manipulation
+
+### Implementation Checklist
+- [ ] Optimal bandwidth calculation
+- [ ] Main RD estimate (local polynomial)
+- [ ] Bandwidth robustness checks (0.5x, 1.0x, 1.5x)
+- [ ] Polynomial order robustness (linear vs. quadratic)
+- [ ] Manipulation test (McCrary density test)
+- [ ] RD plot with binned data
+- [ ] Covariates robustness (with/without controls)
+
+### Post-RD Diagnostic Validation Checkpoint
+
+**After running manipulation test and bandwidth selection, but BEFORE proceeding with main RD estimation:**
+
+1. **Display diagnostic results to the user:**
+   - Show RD plot with binned data and fitted lines
+   - Report McCrary manipulation test (density test) statistic and p-value
+   - Present bandwidth selection results (optimal bandwidth, cross-validation results)
+   - Show bandwidth sensitivity analysis (if completed)
+
+2. **Ask the user validation questions:**
+   - "Please review the RD plot above. Is there a clear discontinuity at the cutoff?"
+   - "Does the manipulation test support no manipulation? (p-value should be > 0.05)"
+   - "Is the selected bandwidth reasonable? Do results appear sensitive to bandwidth choice?"
+   - "Are there any concerns about the identification strategy based on these diagnostics?"
+
+3. **Based on results and user response:**
+   - **If manipulation test passes (p > 0.05, visual discontinuity clear):** Present results to user, ask: "Manipulation test passed. RD identification appears valid. Do you want to proceed with RD estimation?" **WAIT FOR USER CONFIRMATION** before running main RD estimation.
+   - **If manipulation test fails (p < 0.05):** "Manipulation test fails (p=[value]). This suggests potential manipulation at the cutoff, which threatens identification. Recommended actions:
+     a) Consider donut RD (exclude observations near cutoff)
+     b) Consider alternative methods (DiD, IV, matching if applicable)
+     c) Document limitations and proceed with caution
+     How would you like to proceed?"
+   - **CRITICAL: STOP main RD estimation if manipulation detected and user does not explicitly approve proceeding**
+   - **ALWAYS wait for user confirmation before proceeding to main estimation - DO NOT proceed automatically even if tests pass**
+
+### When NOT to Use RD
+
+**Do NOT use RD if:**
+
+1. **No clear cutoff rule** - Treatment assignment must be determined by crossing a threshold
+   - Need: Sharp cutoff (treatment assigned deterministically) or fuzzy cutoff (cutoff affects probability)
+   - Alternative: DiD, IV, or matching if no cutoff exists
+
+2. **Manipulation of running variable** - Units can precisely control their position relative to cutoff
+   - Problem: Self-selection invalidates identification (McCrary test will fail)
+   - Alternative: Document manipulation, use donut RD (exclude near cutoff), or different method
+
+3. **Discontinuities in other variables** - Other factors change discontinuously at cutoff
+   - Problem: Can't attribute effect solely to treatment
+   - Alternative: Control for other discontinuities, or acknowledge confounding
+
+4. **Very few observations near cutoff** - Insufficient data in bandwidth window
+   - Problem: Imprecise estimates, sensitive to specification
+   - Alternative: Wider design if conceptually valid, or different method with more data
+
+5. **Running variable is discrete with gaps** - Few unique values of running variable
+   - Problem: Can't estimate smooth function, bandwidth selection problematic
+   - Alternative: Group-level analysis, DiD if treatment timing varies, or matching
+
+6. **Treatment effect differs by distance from cutoff** - Heterogeneous treatment effects
+   - Problem: RD estimates LATE at cutoff only, not generalizable
+   - Alternative: Acknowledge external validity limitations, estimate effects at different points
+
+7. **Multiple cutoffs with different treatments** - Complex assignment rules
+   - Problem: Hard to identify which cutoff matters
+   - Alternative: Multiple RD estimates, or focus on single cleanest cutoff
+
+8. **Cutoff changes over time or across units** - Non-constant assignment rule
+   - Problem: Identification unclear, confounding with time/unit effects
+   - Alternative: Standardize cutoff, or use DiD if treatment timing varies
+
+### Common RD Mistakes
+
+1. **Not testing for manipulation** - McCrary test is essential
+2. **Using global polynomial** - High-order polynomials introduce bias, use local linear
+3. **Cherry-picking bandwidth** - Use data-driven selection (CCT, CV), show robustness
+4. **Not checking covariate balance** - Covariates should be smooth at cutoff
+5. **Extrapolating far from cutoff** - RD identifies LATE at cutoff, not far away
+6. **Ignoring fuzzy RD** - When compliance isn't perfect, need fuzzy RD (IV-type estimator)
+7. **Not visualizing** - Always plot the data! Binned scatterplot is essential
+
+## Matching Methods
+
+### Requirements
+1. **Balance tests** - Critical before and after matching
+   - Standardized mean differences
+   - Variance ratios
+   - Report improvement in balance
+
+2. **Caliper selection** - For propensity score matching
+   - Use standard caliper (0.2 × SD of logit of propensity score)
+   - Test sensitivity to caliper size
+
+3. **Common support trimming** - Critical for valid inference
+   - Trim observations outside common support region
+   - Standard thresholds: trim if pscore < 0.1 or pscore > 0.9
+   - Report number of observations trimmed
+   - Document chosen trimming thresholds and rationale
+   - Visualize propensity score distributions before and after trimming
+
+4. **Propensity score estimation** - Document specification
+   - Model used (logit/probit)
+   - Variables included
+   - Model fit (pseudo R-squared)
+
+4. **Matching algorithm** - Specify:
+   - Nearest neighbor (with/without replacement)
+   - Kernel matching
+   - Radius matching
+
+### Implementation Checklist
+- [ ] Pre-matching balance table
+- [ ] Propensity score model specification
+- [ ] Propensity score distribution plot (overlap)
+- [ ] Common support trimming (report observations trimmed)
+- [ ] Post-matching balance table
+- [ ] ATE estimate with standard errors
+- [ ] Sensitivity analysis (different calipers/algorithms, different trimming thresholds)
+
+### Post-Matching Balance Validation Checkpoint
+
+**After running matching and balance tests, but BEFORE proceeding with treatment effect estimation:**
+
+1. **Display diagnostic results to the user:**
+   - Show pre-matching balance table (standardized differences)
+   - Present propensity score distribution plot (overlap between treated/control)
+   - Report post-matching balance table (standardized differences after matching)
+   - Display common support trimming results (observations trimmed)
+
+2. **Ask the user validation questions:**
+   - "Please review the balance tables above. Do the standardized differences improve after matching?"
+   - "Is the propensity score overlap sufficient? (Good overlap means distributions overlap well)"
+   - "Are the standardized differences after matching < 0.25 (good balance) or < 0.10 (excellent balance)?"
+   - "Is the common support sufficient? (Too many observations trimmed may limit generalizability)"
+   - "Are there any concerns about matching quality based on these diagnostics?"
+
+3. **Based on results and user response:**
+   - **If balance is good (std diff < 0.25 after matching, good overlap):** Present results to user, ask: "Matching balance appears good. Do you want to proceed with treatment effect estimation?" **WAIT FOR USER CONFIRMATION** before running treatment effect estimation.
+   - **If balance is poor (std diff > 0.25 after matching, poor overlap):** "Matching balance is poor (standardized differences: [values]). This suggests matching may not be appropriate. Recommended actions:
+     a) Try different matching algorithms (kernel, radius matching)
+     b) Adjust caliper or matching parameters
+     c) Consider alternative methods (DiD, IV, RD if applicable)
+     d) Document limitations and proceed with caution
+     How would you like to proceed?"
+   - **CRITICAL: STOP treatment effect estimation if balance is poor and user does not explicitly approve proceeding**
+   - **ALWAYS wait for user confirmation before proceeding to treatment effect estimation - DO NOT proceed automatically even if balance is good**
+
+### When NOT to Use Matching
+
+**Do NOT use matching if:**
+
+1. **Poor overlap (no common support)** - Treated and control groups very different
+   - Problem: Propensity scores don't overlap, many observations trimmed
+   - Alternative: DiD if panel data, IV if instrument available, or acknowledge selection
+
+2. **Selection on unobservables** - Treatment selection based on unmeasured factors
+   - Problem: Matching only controls for observed characteristics (CIA assumption)
+   - Alternative: DiD, IV, or panel methods if unobservables are time-invariant
+
+3. **Very small sample size** - Not enough observations for good matches
+   - Problem: Poor matches, high variance, unreliable estimates
+   - Alternative: Parametric methods (regression with controls), or combine data sources
+
+4. **Many confounders, few observations** - Curse of dimensionality
+   - Problem: Can't find good matches in high dimensions
+   - Alternative: Propensity score matching (reduces dimensionality), or regression
+
+5. **Treatment is continuous** - Matching designed for binary treatment
+   - Problem: No clear "match" for continuous treatment
+   - Alternative: Dose-response models, generalized propensity score, or regression
+
+6. **Time-varying confounding** - Selection factors change over time
+   - Problem: Cross-sectional matching can't handle this
+   - Alternative: Matching + DiD, panel methods, or time-series approaches
+
+7. **Strong functional form assumptions preferred** - When you want to impose structure
+   - Problem: Matching is non-parametric, doesn't impose functional form
+   - Alternative: Parametric regression (if you believe functional form)
+
+### Common Matching Mistakes
+
+1. **Not trimming common support** - Including observations with extreme propensity scores
+2. **Not checking balance** - Balance tests are critical, check before/after
+3. **Over-fitting propensity score model** - Leads to poor overlap, perfect prediction
+4. **Using standard SE** - Need to account for matching (bootstrap or robust SE)
+5. **Ignoring CIA assumption** - Matching requires no selection on unobservables
+6. **Matching on post-treatment variables** - Only match on pre-treatment covariates
+7. **Not showing overlap plot** - Always visualize propensity score distributions
+
+## Instrumental Variables (IV)
+
+**Wooldridge Reference: Chapter 4-5 (IV Estimation) and Chapter 24 (Panel IV)**
+
+Wooldridge covers IV estimation comprehensively, including panel IV methods. Our approach synthesizes Wooldridge's IV expertise (especially panel IV) with Hansen's explicit diagnostic requirements and Angrist's identification focus.
+
+**Corpus Query**: `get_wooldridge_perspective("instrumental variables")` for Wooldridge's IV guidance, or `get_wooldridge_perspective("panel iv")` for panel-specific IV methods.
+
+### Requirements
+1. **First-stage diagnostics** - Always report:
+   - First-stage F-statistic (rule of thumb: F > 10)
+   - First-stage R-squared
+   - First-stage coefficient and SE
+   - Partial F-statistic
+
+2. **Weak instrument tests** - If F < 10:
+   - Report as warning
+   - Consider limited information maximum likelihood (LIML)
+   - Report Anderson-Rubin confidence intervals
+
+3. **Overidentification test** - If over-identified:
+   - Sargan test or Hansen J-test
+   - Report p-value
+   - Failure suggests invalid instruments
+   - **Note:** Overidentification tests are typically non-robust (standard practice). This is appropriate for testing instrument validity.
+
+4. **Exclusion restriction** - Discuss validity:
+   - Why instruments affect treatment but not outcome directly
+   - Document potential violations
+
+5. **Reduced form** - Report reduced-form estimates
+   - Effect of instrument on outcome
+   - Compare to IV estimate
+
+6. **Joint hypothesis testing** - Test joint significance when appropriate
+   - Use F-tests or Wald tests for sets of instruments
+   - Test joint significance of multiple instruments (e.g., all QOB×YOB interactions)
+   - Test joint significance of polynomial terms or interaction effects
+   - Report test statistic and p-value
+   - Important for: Multiple instruments, polynomial controls, sets of fixed effects
+
+### Implementation Checklist
+- [ ] First-stage regression results
+- [ ] First-stage F-statistic (target: > 10)
+- [ ] First-stage R-squared
+- [ ] IV estimate (2SLS/2SLS)
+- [ ] Standard errors (heteroskedasticity-robust)
+- [ ] Overidentification test (if applicable)
+- [ ] Reduced-form estimates
+- [ ] Robustness: different instrument sets
+
+### Post-First-Stage Validation Checkpoint
+
+**After running first-stage regression and diagnostics, but BEFORE proceeding with IV estimation:**
+
+1. **Display diagnostic results to the user:**
+   - Show first-stage regression results (coefficients, standard errors, R-squared)
+   - Report first-stage F-statistic (weak instrument test)
+   - Present first-stage plot (if applicable, showing instrument strength)
+   - Display reduced-form results (if available)
+
+2. **Ask the user validation questions:**
+   - "Please review the first-stage results above. Is the F-statistic > 10? (Strong instruments)"
+   - "Is the first-stage R-squared reasonable? (Higher is better for instrument strength)"
+   - "Do the first-stage coefficients have the expected sign and magnitude?"
+   - "Are there any concerns about instrument strength based on these diagnostics?"
+
+3. **Based on results and user response:**
+   - **If F-statistic > 10 (strong instruments):** Present results to user, ask: "First-stage diagnostics appear strong (F=[value] > 10). Do you want to proceed with IV estimation?" **WAIT FOR USER CONFIRMATION** before running IV estimation.
+   - **If F-statistic < 10 (weak instruments):** "Weak instruments detected (F=[value] < 10). This may lead to biased IV estimates. Recommended actions:
+     a) Consider LIML estimation (more robust to weak instruments)
+     b) Report Anderson-Rubin confidence intervals
+     c) Consider alternative instruments or methods (DiD, RD, matching if applicable)
+     d) Document limitations and proceed with caution
+     How would you like to proceed?"
+   - **CRITICAL: STOP IV estimation if instruments are weak (F < 10) and user does not explicitly approve proceeding**
+   - **If overidentification test available, also validate:** "Overidentification test: [results]. Does this support instrument validity?" **WAIT FOR USER RESPONSE**
+   - **ALWAYS wait for user confirmation before proceeding to IV estimation - DO NOT proceed automatically even if F-statistic > 10**
+
+### When NOT to Use IV
+
+**Do NOT use IV if:**
+
+1. **Weak instruments (F < 10)** - First-stage is weak
+   - Problem: IV estimates biased toward OLS, unreliable inference
+   - Alternative: Find stronger instruments, use LIML, or try different method (DiD, RD, matching)
+
+2. **Exclusion restriction implausible** - Instrument likely affects outcome directly
+   - Problem: IV estimate is biased, not estimating causal effect
+   - Alternative: Find better instrument, or use method without exclusion restriction (DiD, RD)
+
+3. **No valid instrument available** - Can't find variable that satisfies relevance + exclusion
+   - Problem: Can't do IV without valid instrument
+   - Alternative: DiD (if treatment timing varies), RD (if discontinuity), or acknowledge endogeneity
+
+4. **Instrument affects treatment selection** - Heterogeneous treatment effects + instrument affects who is treated
+   - Problem: IV estimates LATE (local to compliers), not ATE
+   - Alternative: Acknowledge LATE interpretation, describe compliers, or use method that estimates ATE
+
+5. **Very small sample** - Need larger sample for IV than OLS
+   - Problem: IV is less efficient, needs more data for precision
+   - Alternative: OLS with controls (acknowledge endogeneity), or combine data sources
+
+6. **Multiple endogenous variables** - Need one instrument per endogenous variable
+   - Problem: Underidentified if not enough instruments
+   - Alternative: Focus on single endogenous variable, find more instruments, or different method
+
+7. **Time-varying endogeneity in panel** - Endogeneity changes over time
+   - Problem: Cross-sectional IV won't handle this
+   - Alternative: Panel IV with entity fixed effects, or first-differences IV
+
+8. **Monotonicity violated** - Instrument moves some units in opposite direction
+   - Problem: LATE interpretation breaks down, defiers exist
+   - Alternative: Document violation, bound estimates, or find better instrument
+
+### Common IV Mistakes
+
+1. **Not checking first-stage strength** - F-statistic is essential (target > 10, prefer > 20)
+2. **Not reporting reduced form** - Shows direct effect of instrument on outcome
+3. **Ignoring overidentification test** - If multiple instruments, must test validity
+4. **Using weak instruments** - Leads to severe bias toward OLS
+5. **Not discussing exclusion restriction** - Must argue why instrument only affects outcome through treatment
+6. **Confusing ATE and LATE** - IV estimates LATE (local to compliers), not ATE
+7. **Not describing compliers** - Who responds to the instrument? LATE applies to them
+
+## Panel Treatment Effects
+
+**Wooldridge Reference: Chapter 28 - Estimation of Treatment Effects with Panel Data**
+
+Wooldridge provides comprehensive coverage of panel treatment effects methods, including two-way fixed effects DiD, panel IV for treatment effects, and matching with panel data. Our approach synthesizes Wooldridge's panel expertise with Angrist's identification focus.
+
+**Corpus Query**: `get_wooldridge_perspective("difference-in-differences")` or `semantic_search_wooldridge("panel treatment effects two-way fixed effects")` for Wooldridge's detailed guidance.
+
+**Cross-Reference**: See WOOLDRIDGE_EVALUATION.md:1504-1509 for panel treatment effects comparison.
+
+### DiD with Panel Data
+- **Two-way fixed effects DiD** is a panel treatment effects method
+- Specification: `Y_it = α + β*Treat_i*Post_t + γ_i + δ_t + ε_it`
+- Where:
+  - `γ_i`: Entity (unit) fixed effects
+  - `δ_t`: Time fixed effects
+  - `Treat_i*Post_t`: Treatment × Post interaction
+- Standard errors clustered at entity level (or treatment group level)
+- This is the standard panel treatment effects specification
+
+### IV for Treatment Effects with Panel Data
+- Panel IV can be used to estimate treatment effects
+- Include entity and time fixed effects
+- Cluster standard errors at entity level
+- Same first-stage diagnostics as cross-section IV (F-statistic, R-squared)
+
+### Matching with Panel Data
+- Matching methods can be applied to panel data
+- Match on pre-treatment characteristics
+- Can combine with fixed effects or first-differencing
+- Common support trimming still applies
+
+### Panel-Specific Considerations
+- **Clustering**: Always cluster standard errors at entity level
+- **Serial correlation**: Test with Wooldridge test, cluster SE addresses this
+- **Attrition**: Test for selective attrition, apply correction if needed (see panel-data.mdc)
+- **Fixed effects**: Typically include entity and time FE in panel treatment effects
+
+## Reporting Requirements
+All causal inference analyses must include:
+1. **Identification strategy** - Clear explanation of variation used
+2. **Main results** - Point estimates, standard errors, confidence intervals
+3. **Diagnostic tests** - All relevant tests for method used
+4. **Robustness checks** - Alternative specifications
+5. **Limitations** - Threats to identification, assumptions
+6. **Panel data note** - If using panel data, document panel structure and clustering

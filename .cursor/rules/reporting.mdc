@@ -1,0 +1,423 @@
+---
+description: Standards for generating reports and documenting analyses
+globs:
+  - "**/reporting.py"
+  - "**/utils/reporting.py"
+---
+
+# Reporting Standards
+
+## Report Structure
+
+### Standard Sections
+Every analysis report should include:
+
+1. **Executive Summary**
+   - Key findings (1-2 paragraphs)
+   - Policy implications (if applicable)
+   - Main estimate with confidence interval
+
+2. **Data Description**
+   - Data source and sample period
+   - Sample size (N)
+   - Variable definitions and summary statistics
+   - **Summary statistics BEFORE modeling** - Always provide summary statistics (means, standard deviations, distributions) by treatment/control groups, by time periods, or overall before running regressions
+   - Missing data handling
+   - Sample selection criteria
+
+3. **Methodology**
+   - Identification strategy (for causal inference)
+   - Model specification with LaTeX notation
+   - Estimation method
+   - Standard error calculation (robust, clustered, etc.)
+   - Diagnostic tests performed
+
+4. **Results**
+   - Coefficient estimates with standard errors
+   - Significance levels
+   - Economic interpretation
+   - Confidence intervals
+   - R-squared and goodness of fit measures
+   - **Comparison tables** - Include tables showing alternative specifications side-by-side (e.g., OLS vs IV, pooled OLS vs fixed effects, different control sets, different time windows). This demonstrates robustness and helps readers compare estimates across specifications. Use `src.utils.comparison_tables.create_comparison_table()` to generate comparison tables programmatically.
+
+5. **Robustness Checks**
+   - Alternative specifications
+   - Sensitivity analysis
+   - Placebo tests (if applicable)
+   - Subgroup analysis (if applicable)
+
+6. **Limitations**
+   - Threats to identification
+   - Data limitations
+   - Assumptions and their plausibility
+   - External validity concerns
+
+## Minimum Reporting Standards
+
+**Every analysis MUST include these elements:**
+
+### For ALL Methods
+
+1. **Sample Description**
+   - Total observations (N)
+   - Number of treated/control (for causal inference)
+   - Time periods covered (for panel data)
+   - Any sample restrictions or exclusions
+
+2. **Descriptive Statistics**
+   - Means and standard deviations for all key variables
+   - By treatment/control group (if applicable)
+   - By time period (if panel data)
+   - BEFORE any regression results
+
+3. **Model Specification**
+   - Full equation in LaTeX notation
+   - All variables included (treatment, controls, fixed effects)
+   - Standard error type (robust, clustered, HAC)
+   - Clustering level if applicable
+
+4. **Main Estimates**
+   - Coefficient (β)
+   - Standard error (SE) in parentheses
+   - P-value or significance stars
+   - 95% confidence interval
+   - Economic interpretation in plain English
+
+5. **Goodness of Fit**
+   - R-squared (or appropriate fit measure)
+   - Sample size for each regression
+   - Degrees of freedom (if relevant)
+
+6. **ALL Relevant Diagnostics** (see method-specific below)
+
+### Difference-in-Differences (DiD)
+
+**MUST Report:**
+1. Pre-treatment balance table (treated vs control means)
+2. Parallel trends test (statistic and p-value)
+3. Event study plot (with pre-treatment leads)
+4. Number of treated vs control units
+5. Pre/post time periods
+6. Clustered standard errors (at what level)
+7. At least one robustness check (alternative time window or placebo test)
+
+**Table Format:**
+```
+                          Treated    Control    Difference    p-value
+Pre-Treatment:
+  Outcome                 45.2       43.8       1.4           0.23
+  Covariate 1             12.3       11.9       0.4           0.56
+  Covariate 2             0.45       0.43       0.02          0.71
+
+Parallel Trends Test:                                        0.18
+N (Treated)                                    500
+N (Control)                                    450
+```
+
+### Instrumental Variables (IV)
+
+**MUST Report:**
+1. First-stage results (full table with F-statistic)
+2. First-stage F-statistic (prominently displayed)
+3. First-stage R²
+4. Second-stage (main) results
+5. Reduced-form estimates
+6. Overidentification test (if >1 instrument)
+7. Weak instrument diagnostic interpretation
+
+**Table Format:**
+```
+                    First Stage    Reduced Form    IV (2SLS)
+Instrument          0.523***       1.245***
+                    (0.089)        (0.312)
+
+Treatment                                          2.381***
+                                                   (0.687)
+
+First-stage F       34.6
+Overid test (p)                                   0.42
+N                   1,000          1,000           1,000
+```
+
+### Regression Discontinuity (RD)
+
+**MUST Report:**
+1. RD plot (binned scatterplot with fitted lines)
+2. McCrary manipulation test (statistic and p-value)
+3. Bandwidth selection method (CCT, CV, etc.)
+4. Optimal bandwidth value
+5. Bandwidth robustness (0.5x, 1.0x, 1.5x)
+6. Polynomial order used
+7. Number of observations within bandwidth
+
+**Table Format:**
+```
+                    Bandwidth
+                    0.5×BW      1.0×BW      1.5×BW
+RD Estimate         2.34*       2.18**      2.05**
+                    (1.23)      (0.89)      (0.78)
+
+McCrary test (p)                0.34
+Optimal bandwidth               5.2
+N (within BW)       234         456         678
+```
+
+### Matching Methods
+
+**MUST Report:**
+1. Pre-matching balance table (standardized differences)
+2. Post-matching balance table (standardized differences)
+3. Propensity score overlap plot
+4. Common support trimming (% observations dropped)
+5. Matching algorithm used (NN, kernel, radius)
+6. Caliper size (if applicable)
+7. Treatment effect estimate with SE
+
+**Table Format:**
+```
+                    Pre-Match          Post-Match
+                    Treated  Control   Std Diff  Std Diff
+Covariate 1         45.2     38.3      0.52      0.08
+Covariate 2         0.67     0.48      0.43      0.12
+Covariate 3         12.3     11.1      0.23      0.09
+
+Observations trimmed:                            5.2%
+Matching algorithm:                              Nearest neighbor (1:1)
+Treatment effect:                                2.34 (SE = 0.45)
+```
+
+### Panel Fixed Effects
+
+**MUST Report:**
+1. Number of entities (N)
+2. Number of time periods (T)
+3. Balanced vs unbalanced panel
+4. Which fixed effects included (entity, time, both)
+5. R² within, R² between, R² overall
+6. Clustered standard errors (at entity level minimum)
+7. Serial correlation test (if applicable)
+8. Hausman test (if comparing FE vs RE)
+
+**Table Format:**
+```
+                    Pooled OLS    Fixed Effects    Random Effects
+Treatment           0.125***      0.098**          0.112***
+                    (0.043)       (0.041)          (0.039)
+
+Entity FE           No            Yes              No
+Time FE             No            Yes              Yes
+Cluster SE          No            Entity           Entity
+
+N (entities)        500           500              500
+T (periods)         10            10               10
+R² within           0.15          0.23             0.21
+R² overall          0.28          0.18             0.24
+Hausman test (p)                                   0.03
+
+*** p<0.01, ** p<0.05, * p<0.1
+Standard errors clustered at entity level (FE, RE)
+```
+
+## Significance Stars and Notation
+
+**Standard Convention:**
+- `***` : p < 0.01 (highly significant)
+- `**`  : p < 0.05 (significant)
+- `*`   : p < 0.10 (marginally significant)
+
+**Table Footer (Always Include):**
+```
+Notes: Standard errors in parentheses. *** p<0.01, ** p<0.05, * p<0.1
+[Additional notes about clustering, sample restrictions, etc.]
+```
+
+## Economic Interpretation Guidelines
+
+**Always translate statistical results to economic meaning:**
+
+❌ **Bad:** "The coefficient is 0.125 with p < 0.01"
+
+✅ **Good:** "The treatment increases outcomes by 0.125 units on average (p < 0.01), which represents a 12% increase relative to the pre-treatment mean of 1.04"
+
+**Template:**
+```
+"[Treatment/intervention] [increases/decreases] [outcome] by [coefficient]
+[units] on average (p = [p-value]), which represents a [X]% [increase/decrease]
+relative to the [baseline/control group mean] of [value]"
+```
+
+**Additional Context to Provide:**
+1. Absolute effect size (coefficient)
+2. Relative effect size (% change from baseline)
+3. Statistical significance (p-value or stars)
+4. Confidence interval range
+5. Practical significance (is this a large or small effect?)
+
+## Common Reporting Mistakes to Avoid
+
+1. **Not reporting diagnostics** - Always show parallel trends test, first-stage F, etc.
+2. **Cherry-picking specifications** - Show multiple specs, not just best result
+3. **Hiding insignificant results** - Report all relevant estimates, significant or not
+4. **Over-interpreting significance** - p=0.049 and p=0.051 are not fundamentally different
+5. **Ignoring practical significance** - Statistically significant ≠ practically important
+6. **Not clustering SE** - Almost always need clustered SE for panel data or grouped treatments
+7. **Missing sample sizes** - Always report N for each regression
+8. **No confidence intervals** - Point estimates without uncertainty are incomplete
+9. **Vague language** - "The effect is positive" → "Treatment increases outcomes by 2.3 units (15%)"
+10. **No robustness checks** - Single specification is rarely convincing
+
+## LaTeX Notation
+
+### Standard Formats
+- Use LaTeX math notation for all model specifications
+- Include in docstrings and documentation
+
+### Common Specifications
+
+**OLS:**
+```
+Y_i = α + βX_i + ε_i
+```
+
+**Panel Fixed Effects:**
+```
+Y_it = X_it'β + α_i + γ_t + ε_it
+```
+Where α_i are entity fixed effects and γ_t are time fixed effects.
+
+**Difference-in-Differences:**
+```
+Y_it = α + β(Treat_i × Post_t) + γ_i + δ_t + ε_it
+```
+Where Treat_i is treatment indicator and Post_t is post-treatment period.
+
+**Regression Discontinuity:**
+```
+Y_i = α + βTreat_i + f(Running_i) + ε_i
+```
+Where f(·) is a polynomial in the running variable.
+
+**Instrumental Variables:**
+```
+First stage:  X_i = π_0 + π_1 Z_i + u_i
+Second stage: Y_i = α + βX̂_i + ε_i
+```
+
+## Tables
+
+### Regression Tables
+Standard format:
+- Column 1: Variable names
+- Subsequent columns: Different specifications
+- Bottom rows: Sample size, R-squared, additional statistics
+- Notes: Standard error type, significance levels
+
+Example:
+```
+                    (1)          (2)          (3)
+                    OLS          FE           FE+IV
+------------------------------------------
+Treatment           0.125***     0.098**      0.142***
+                    (0.043)      (0.041)      (0.049)
+
+Controls            Yes          Yes          Yes
+Fixed Effects       No           Entity       Entity
+
+N                   1,234        1,234        1,234
+R-squared           0.23         0.45         0.42
+------------------------------------------
+Robust standard errors in parentheses
+*** p<0.01, ** p<0.05, * p<0.1
+```
+
+### Summary Statistics Table
+- Mean, SD, Min, Max for continuous variables
+- Frequency, percentage for categorical variables
+- Sample sizes for each variable
+
+## Reproducibility Requirements
+
+### Random Seeds
+- **Always set random seeds** for any randomization:
+  ```python
+  np.random.seed(42)  # or other fixed seed
+  ```
+- Document seed value in report
+- Ensures reproducible results
+
+### Data Versioning
+- Document data source and version
+- Include data loading code
+- Note any data cleaning steps
+
+### Code Organization
+- Organize code into clear scripts/functions
+- Include comments explaining key steps
+- Version control all code (Git)
+
+### Dependencies
+- List all package versions in requirements.txt
+- Document Python version
+- Include environment setup instructions
+
+## Output Formats
+
+### Supported Formats
+1. **Markdown** - For GitHub, documentation
+2. **HTML** - For interactive viewing
+3. **PDF** - For final reports
+4. **LaTeX** - For academic papers
+
+### Report Generation Functions
+Create functions that:
+- Accept results dictionaries
+- Format tables and figures
+- Generate complete reports
+- Support multiple output formats
+
+Example structure:
+```python
+def generate_report(
+    results: dict,
+    output_format: str = 'markdown',
+    save_path: Optional[str] = None
+) -> str:
+    """Generate analysis report.
+    
+    Args:
+        results: Dictionary with all analysis results
+        output_format: 'markdown', 'html', 'pdf', or 'latex'
+        save_path: Path to save report
+        
+    Returns:
+        Report as string
+    """
+    pass
+```
+
+## Documentation Requirements
+
+### Code Documentation
+- Docstrings for all public functions
+- Inline comments for complex logic
+- Examples in docstrings for key functions
+
+### Analysis Documentation
+- Document all specification choices
+- Explain why certain methods were chosen
+- Note alternative approaches considered
+
+### Result Interpretation
+- Translate statistical results to economic meaning
+- Provide context (e.g., "A 10% increase in X leads to...")
+- Compare to prior literature if applicable
+
+## Best Practices
+
+1. **Be transparent** - Document all steps, including failures
+2. **Show uncertainty** - Always include confidence intervals
+3. **Acknowledge limitations** - No analysis is perfect
+4. **Use consistent formatting** - Same style across all reports
+5. **Include code** - Code should be part of the report or supplementary
+6. **Version control** - Track changes to analyses
+7. **Peer review** - Have others review before finalizing

@@ -1,0 +1,82 @@
+---
+description: Project overview and purpose for the econometrics agent
+alwaysApply: true
+---
+
+# Econometrics Agent Project Overview
+
+## Purpose
+This project provides an AI-powered econometrics agent for applied microeconometrics research. The agent automates complex econometric analyses with a focus on causal inference and panel data methods, applying rigorous methodological standards to well-identified causal questions.
+
+## Primary Focus Areas
+1. **Causal Inference** (Priority #1): Difference-in-differences, regression discontinuity, matching, instrumental variables
+2. **Panel Data Methods** (Priority #2): Fixed effects, random effects, panel IV estimation
+3. **Core Regression**: OLS with robust/clustered standard errors and diagnostics
+4. **Time Series** (Minimal): Basic stationarity tests and ARIMA for robustness checks only
+
+## Technology Stack
+- **Language**: Python 3.10+
+- **Core Libraries**: 
+  - pandas >= 2.0.0 (data manipulation)
+  - numpy >= 1.24.0 (numerical operations)
+  - statsmodels >= 0.14.0 (econometric models)
+  - scipy >= 1.10.0 (statistical tests)
+  - linearmodels >= 5.0.0 (panel data methods)
+  - scikit-learn >= 1.3.0 (matching methods)
+
+## Architecture
+Hybrid design supporting three usage modes:
+1. **Library**: Importable Python package with functions and classes
+2. **CLI**: Command-line interface for batch processing
+3. **Cursor Integration**: Interactive agent for conversational analysis via Cursor chat
+
+## Methodology Selection
+
+The agent includes a methodology selection and guidance system (`src/guidance/`) that helps users choose appropriate econometric methods based on their research question and data structure. The system provides:
+- Interactive methodology selection with Q&A flow
+- Economic intuition and causal identification explanations
+- Statistical reasoning and diagnostic interpretations
+- Toggleable explanation modes (basic/educational)
+- Data structure analysis and method recommendations
+
+See `.cursor/rules/methodology-selection.mdc` for details on using the methodology selection system in Cursor chat.
+
+## Target Use Cases
+- Applied microeconometric research
+- Policy evaluation studies
+- Causal effect estimation
+- Panel data analysis
+- Robustness checks and sensitivity analysis
+
+## Philosophical Foundation
+
+Our agent synthesizes best practices from leading econometric traditions:
+
+**Methodological Rigor (Hansen):**
+- Comprehensive methodological foundation
+- Theoretical rigor and proper statistical inference
+- Emphasis on robust standard errors, diagnostic tests, and model validation
+- Systematic treatment of econometric methods
+
+**Identification Focus (MHE/Angrist):**
+- Emphasis on identification strategy over specification
+- Practical application to real-world causal questions
+- Focus on credible identification (DiD, RD, IV, matching)
+- Methods serve identification strategy
+
+**Panel Data Expertise (Wooldridge):**
+- Panel data methods as foundation (Priority #2)
+- Context-appropriate standard errors (HC3 for limited dependent variables, clustered for panels, HAC for time series)
+- Bridge between theory and application
+- Understanding of mechanics (within transformation, fixed effects implementation)
+- Small-sample corrections and panel-specific diagnostics
+
+**Our Synthesis:**
+- Apply rigorous methods (Hansen) to well-identified causal questions (Angrist)
+- Leverage panel data expertise (Wooldridge) with modern best practices (Hansen)
+- Use context-appropriate methods (Wooldridge) while maintaining robust defaults (Hansen)
+- Combine methodological rigor (Hansen) with identification focus (Angrist) and practical application (Wooldridge)
+- Emphasize both proper inference AND credible identification
+- Prioritize transparency, reproducibility, and validation
+
+This approach ensures analyses are both methodologically sound and practically relevant for answering causal questions in applied microeconometrics.

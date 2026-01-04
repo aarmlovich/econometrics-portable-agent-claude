@@ -1,0 +1,228 @@
+---
+description: Methodology selection and guidance system for choosing appropriate econometric methods
+globs:
+  - "**/guidance/**/*.py"
+---
+
+# Methodology Selection and Guidance System
+
+## Purpose
+
+This rule guides the Cursor agent on how to help users select appropriate econometric methods based on their research question and data structure. The system provides interactive methodology selection with economic intuition, causal identification reasoning, and statistical explanations.
+
+## When to Use
+
+Use the methodology selection system when:
+- User asks "What method should I use?" or "How should I analyze this data?"
+- User has data but is unclear on the appropriate analysis approach
+- User wants to understand why a particular method is recommended
+- User wants economic intuition or causal identification explanations
+- User is learning econometrics and wants educational explanations
+
+## System Components
+
+The methodology selection system consists of:
+
+1. **Data Structure Analysis** (`src.guidance.methodology_selection.analyze_data_structure`)
+   - Detects panel structure (entity + time identifiers)
+   - Identifies treatment variables, running variables, instruments
+   - Analyzes time-varying vs. time-invariant variables
+
+2. **Research Question Classification** (`src.guidance.methodology_selection.classify_research_question`)
+   - Classifies questions as causal, descriptive, or predictive
+   - Detects treatment/intervention language
+   - Identifies temporal variation
+
+3. **Method Recommendation** (`src.guidance.methodology_selection.recommend_methods`)
+   - Recommends methods based on data structure and research question
+   - Provides confidence levels and rationale
+   - Returns suitability scores
+
+4. **Explanation System** (`src.guidance.explanations`)
+   - Basic explanations (concise, practical) - default mode
+   - Educational explanations (detailed, pedagogical) - toggle mode
+   - Covers: method selection, economic intuition, causal identification, statistical assumptions, standard errors, diagnostics
+
+5. **Question Flow** (`src.guidance.question_flow.conduct_methodology_selection`)
+   - Structures interactive Q&A process
+   - Generates clarifying questions
+   - Suggests next steps
+
+## Usage in Cursor Chat
+
+### Basic Workflow
+
+1. **Understand User's Research Question**
+   - Ask: "What is your research question? What are you trying to estimate?"
+   - Use `classify_research_question()` to analyze the question
+
+2. **Analyze Data Structure (if data available)**
+   - If user provides data or data path, load and analyze it
+   - Use `analyze_data_structure()` to detect panel structure, treatment variables, etc.
+   - Report findings to user
+
+3. **Generate Recommendations**
+   - Use `recommend_methods()` with data structure and research question
+   - Present top recommendations with rationale
+   - Use `get_explanation()` to provide method selection explanations
+
+4. **Provide Explanations**
+   - By default, use basic explanations (concise, practical)
+   - If user asks "why?" or "explain more", provide educational explanations
+   - Use `get_explanation()` with appropriate topic and mode
+
+5. **Interactive Clarification**
+   - Ask clarifying questions from `conduct_methodology_selection()['questions_to_ask']`
+   - Refine recommendations based on user responses
+   - Suggest next steps
+
+### Explanation Modes
+
+**Default: Basic Mode**
+- Concise, practical explanations
+- Focus on key points for decision-making
+- Use when user wants quick guidance
+
+**Educational Mode (Toggle)**
+- Detailed, pedagogical explanations
+- Include theoretical background, assumptions, interpretation
+- Use when user asks "explain more" or "why?" or explicitly requests educational mode
+
+**Toggle Explanations:**
+- User can request: "Explain in more detail" or "Educational mode" for any explanation
+- Use `get_explanation(topic, context, mode='educational')` for that specific explanation
+- User can set global educational mode: "Use educational explanations" → use `toggle_explanation_mode('educational')`
+
+### Explanation Topics
+
+The explanation system covers:
+
+1. **Method Selection** (`method_selection_*`)
+   - `method_selection_did`: Why DiD is recommended
+   - `method_selection_iv`: Why IV is recommended
+   - `method_selection_rd`: Why RD is recommended
+   - `method_selection_matching`: Why matching is recommended
+   - `method_selection_fe`: Why fixed effects is recommended
+
+2. **Economic Intuition** (`economic_intuition_*`)
+   - `economic_intuition_coefficient`: What coefficients mean economically
+
+3. **Causal Identification** (`causal_identification_*`)
+   - `causal_identification_did`: DiD identifying assumption
+
+4. **Statistical Assumptions** (`statistical_assumptions_*`)
+   - `statistical_assumptions_ols`: OLS assumptions
+
+5. **Standard Errors** (`standard_error_*`)
+   - `standard_error_robust`: Why robust SE
+   - `standard_error_clustered`: Why clustered SE
+
+6. **Diagnostic Interpretations** (`diagnostic_*`)
+   - `diagnostic_first_stage_f`: First-stage F-statistic
+   - `diagnostic_overidentification`: Overidentification tests
+   - `diagnostic_parallel_trends`: Parallel trends test
+   - `diagnostic_hausman`: Hausman test
+
+### Example Conversations
+
+**Example 1: User asks "What method should I use?"**
+
+```
+User: "I have panel data on firms over 10 years. I want to estimate the effect of a policy 
+       that was implemented in some states but not others, starting in 2015. What method should I use?"
+
+Agent: [Analyzes data structure if data provided, classifies research question]
+       "Based on your research question and data structure, I recommend Difference-in-Differences (DiD). 
+        Here's why: [uses get_explanation('method_selection_did', mode='basic')]
+        
+        DiD compares changes over time between treated (policy states) and control (non-policy states) 
+        groups, using the assumption that trends would be parallel in the absence of treatment.
+        
+        Required variables:
+        - Outcome variable
+        - Treatment indicator (state × post-2015)
+        - Entity identifier (firm ID)
+        - Time identifier (year)
+        
+        Would you like me to explain the parallel trends assumption in more detail?"
+```
+
+**Example 2: User requests educational explanation**
+
+```
+User: "Why is DiD appropriate here? Explain more."
+
+Agent: [Uses get_explanation('method_selection_did', mode='educational')]
+       "Difference-in-differences (DiD) is a causal inference method that exploits variation in 
+        treatment timing across groups. The key identifying assumption is the 'parallel trends' 
+        assumption: in the absence of treatment, the treated and control groups would have followed 
+        parallel trends. DiD estimates the treatment effect as the difference between (1) the change 
+        in the treated group and (2) the change in the control group. This 'difference of differences' 
+        removes time-invariant confounders and common time trends. DiD is ideal when you have panel 
+        data with a clear treatment event, variation in treatment timing, and can verify parallel 
+        pre-treatment trends.
+        
+        [Continue with detailed explanation...]"
+```
+
+**Example 3: User has unclear question**
+
+```
+User: "I want to analyze my data. What should I do?"
+
+Agent: "To recommend the best method, I need to understand your research question and data structure.
+        
+        Questions:
+        1. What is your research question? What are you trying to estimate?
+        2. What data do you have? Is it panel data (multiple observations per unit over time) or cross-sectional?
+        3. Do you have a treatment or intervention variable?
+        
+        Once I understand these, I can recommend appropriate methods and explain the reasoning."
+```
+
+## Integration with Other Rules
+
+- **data-handling.mdc**: Use data structure analysis to guide data preparation
+- **causal-inference.mdc**: Methodology selection guides users to appropriate causal methods
+- **panel-data.mdc**: Data structure analysis detects panel structure and suggests panel methods
+- **diagnostics.mdc**: Provide diagnostic explanations using explanation system
+- **reporting.mdc**: Methodology selection helps structure analysis reports
+
+## Key Principles
+
+1. **Interactive Q&A**: Ask clarifying questions rather than making assumptions
+2. **Default to Basic**: Provide concise explanations by default, expand when requested
+3. **Explain Reasoning**: Always explain why a method is recommended (economic intuition, causal identification, statistical reasoning)
+4. **Provide Context**: Tailor explanations to user's specific research question and data
+5. **Suggest Next Steps**: After recommendations, suggest concrete next steps (load data, check variables, run diagnostics)
+
+## Code Examples
+
+```python
+# Analyze data structure
+from src.guidance.methodology_selection import analyze_data_structure
+data_structure = analyze_data_structure(data)
+
+# Classify research question
+from src.guidance.methodology_selection import classify_research_question
+research_class = classify_research_question("What is the effect of treatment on outcome?")
+
+# Get recommendations
+from src.guidance.methodology_selection import recommend_methods
+recommendations = recommend_methods(data_structure, research_class)
+
+# Get explanation
+from src.guidance.explanations import get_explanation
+explanation = get_explanation('method_selection_did', mode='basic')
+
+# Conduct full methodology selection
+from src.guidance.question_flow import conduct_methodology_selection
+result = conduct_methodology_selection(data=data, research_question=question)
+```
+
+## Notes
+
+- The system is designed for interactive use in Cursor chat
+- Explanations are context-aware and can be customized based on user's data/research question
+- The agent should use this system proactively when users seem uncertain about methodology
+- Always combine methodology selection with data structure analysis when data is available
