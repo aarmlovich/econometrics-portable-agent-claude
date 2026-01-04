@@ -28,6 +28,13 @@ The Econometrics Agent provides a hybrid architecture supporting three usage mod
 - Diagnostic testing and visualization
 - Basic time series methods (for robustness checks)
 
+### Wooldridge Thought Integration
+- **Portable Wooldridge Textbook**: 73 page-range markdown files embedded in `docs/wooldridge_textbook/`
+- **Page-Level Citations**: All search results include Wooldridge page references
+- **Ask Wooldridge**: Natural language query interface for econometric guidance
+- **Specification Tests**: RESET test for functional form, VIF for multicollinearity
+- **Authoritative Thresholds**: All diagnostic thresholds cite Wooldridge (F < 10 for weak instruments, etc.)
+
 ## Installation
 
 ### Prerequisites
@@ -226,64 +233,84 @@ Ask questions like:
 
 ## Wooldridge Corpus Integration
 
-The agent integrates Wooldridge's "Econometric Analysis of Cross Section and Panel Data" textbook as a searchable corpus, enabling triangulation of perspectives from Hansen, Angrist/MHE, and Wooldridge.
+The agent integrates Wooldridge's "Econometric Analysis of Cross Section and Panel Data" (2nd ed.) textbook as a searchable, page-indexed corpus for authoritative econometric guidance.
 
-**Note**: The corpus is pre-built and included in the repository. The built corpus data (`data/corpus/`) contains embeddings, indices, and cross-references ready for immediate use. Source markdown files (`docs/wooldridge_extracts/`) are also included for reference and to enable corpus rebuilding if needed.
+### Key Features
 
-### Building the Corpus (Optional)
+- **73 Page-Range Files**: Embedded in `docs/wooldridge_textbook/` for portability
+- **Page-Level Citations**: All search results include precise Wooldridge page references
+- **Ask Wooldridge**: Natural language query interface for econometric guidance
+- **No External Dependencies**: Fully self-contained with relative paths
 
-If you need to rebuild the corpus (e.g., after modifying source files):
+### Using the Wooldridge Corpus
 
-```bash
-# Build the corpus from markdown extracts
-python -m src.corpus.cli build
-
-# Or use the CLI directly
-econ-agent corpus build
-```
-
-The corpus is built from markdown files in `docs/wooldridge_extracts/` and creates:
-- Vector embeddings for semantic search (9361+ embeddings)
-- Structured topic indices (21 methodologies indexed)
-- Cross-references to evaluation documents
-
-### Using the Corpus
-
-The corpus can be queried programmatically or through the agent:
+#### Ask Wooldridge for Guidance
 
 ```python
-from src.corpus import AgentIntegration
+from src.corpus import ask_wooldridge
 
-# Initialize integration
-agent = AgentIntegration()
-
-# Semantic search
-results = agent.semantic_search_wooldridge(
-    "What does Wooldridge say about clustered standard errors in panel data?",
-    top_k=3
-)
-
-# Lookup specific topic
-perspective = agent.get_wooldridge_perspective("fixed_effects_estimation")
-
-# Triangulate with other perspectives
-from src.corpus import Triangulation
-triangulation = Triangulation(agent)
-comparison = triangulation.compare_methodology("clustered_standard_errors")
+# Ask for methodological advice
+result = ask_wooldridge("When should I use fixed effects vs random effects?")
+print(result['answer'])  # Wooldridge's guidance
+print(result['citations'])  # Page references
 ```
 
-### Corpus Validation
+#### Search with Page Citations
 
-Validate agent rules and models against Wooldridge's recommendations:
+```python
+from src.corpus import search_wooldridge
 
-```bash
-# Validate all rules and models
-econ-agent corpus validate-all
+# Search for topics with page references
+results = search_wooldridge("hausman test", top_k=3)
+for r in results:
+    print(f"{r['title']} ({r['citation']})")
+    print(r['content'][:300])
+```
 
-# Validate specific components
-econ-agent corpus validate-rules
-econ-agent corpus validate-models
-econ-agent corpus validate-coverage
+#### Get Methodology Recommendations
+
+```python
+from src.corpus import get_methodology_recommendation
+
+# Get Wooldridge guidance for a specific method
+rec = get_methodology_recommendation('iv',
+    diagnostics={'f_stat': 8.5, 'sargan_p': 0.02})
+
+# View warnings based on diagnostics
+print(rec['warnings'])  # Includes Wooldridge citations
+```
+
+#### Specification Testing
+
+```python
+from src.diagnostics import reset_test, variance_inflation_factors
+
+# Test functional form (Wooldridge, Ch. 6, p.124-125)
+reset = reset_test(y, X)
+print(reset['interpretation'])
+
+# Test multicollinearity (Wooldridge, Ch. 4)
+vif = variance_inflation_factors(X)
+print(f"Max VIF: {vif['max_vif']}")  # Threshold: 10
+```
+
+### Available Wooldridge Topics
+
+**Panel Data**: fixed_effects, random_effects, hausman_test, clustered_se, first_differencing
+
+**Instrumental Variables**: instrumental_variables, 2sls, weak_instruments, overidentification, endogeneity_test
+
+**Robust Inference**: robust_se, heteroskedasticity_robust, hc_variants
+
+**Treatment Effects**: matching, propensity_score, diff_in_diff, regression_discontinuity
+
+**Diagnostics**: reset_test (functional form), vif (multicollinearity)
+
+### Portability Notes
+
+- **Relative Paths**: All corpus paths use `Path(__file__).parent` for portability
+- **Self-Contained**: No external API calls or downloads needed
+- **GitHub-Ready**: Clone and run - textbook is included in the repository
 ```
 
 ### Verifying Corpus Installation
