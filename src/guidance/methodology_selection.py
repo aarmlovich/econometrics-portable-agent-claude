@@ -4,6 +4,7 @@ from typing import Dict, Any, List, Optional
 import numpy as np
 import pandas as pd
 import warnings
+import re
 
 
 def analyze_data_structure(data: pd.DataFrame) -> Dict[str, Any]:
@@ -44,15 +45,21 @@ def analyze_data_structure(data: pd.DataFrame) -> Dict[str, Any]:
     
     cols = data.columns.tolist()
     
-    # Common entity identifier names
-    entity_keywords = ['id', 'entity', 'unit', 'firm', 'individual', 'person', 'state', 'country',
-                      'county', 'school', 'store', 'plant', 'company']
-    time_keywords = ['time', 'year', 'period', 'date', 'month', 'quarter', 'week', 'day']
-    
+    # Common entity identifier names (using word boundaries to prevent false positives)
+    # Word boundaries (\b) prevent matching 'valid', 'android', 'identify', etc.
+    entity_keywords = [r'\bid\b', r'\bentity\b', r'\bunit\b',
+                      r'\bfirm\b', r'\bindividual\b', r'\bperson\b',
+                      r'\bstate\b', r'\bcountry\b', r'\bcounty\b',
+                      r'\bschool\b', r'\bstore\b', r'\bplant\b',
+                      r'\bcompany\b']
+    time_keywords = [r'\btime\b', r'\byear\b', r'\bperiod\b',
+                    r'\bdate\b', r'\bmonth\b', r'\bquarter\b',
+                    r'\bweek\b', r'\bday\b']
+
     # Look for entity identifier
     for col in cols:
         col_lower = col.lower()
-        if any(keyword in col_lower for keyword in entity_keywords):
+        if any(re.search(keyword, col_lower) for keyword in entity_keywords):
             # Check if this looks like an identifier (many unique values, or repeated values)
             n_unique = data[col].nunique()
             if n_unique < len(data) * 0.9:  # Not too many unique values (likely an ID)
@@ -65,7 +72,7 @@ def analyze_data_structure(data: pd.DataFrame) -> Dict[str, Any]:
     # Look for time identifier
     for col in cols:
         col_lower = col.lower()
-        if any(keyword in col_lower for keyword in time_keywords):
+        if any(re.search(keyword, col_lower) for keyword in time_keywords):
             # Check if numeric or datetime
             if pd.api.types.is_numeric_dtype(data[col]) or pd.api.types.is_datetime64_any_dtype(data[col]):
                 result['suggested_time_col'] = col
@@ -100,34 +107,37 @@ def analyze_data_structure(data: pd.DataFrame) -> Dict[str, Any]:
                 result['time_varying_vars'].append(col)
     
     # Look for treatment-like variables (binary 0/1 variables)
+    treatment_keywords = [r'\btreat\b', r'\btreatment\b', r'\bd\b',
+                         r'\bdummy\b', r'\bindicator\b']
     for col in cols:
         if data[col].dtype in ['int64', 'float64']:
             unique_vals = data[col].dropna().unique()
             if len(unique_vals) == 2 and set(unique_vals).issubset({0, 1}):
                 # Check if name suggests treatment
                 col_lower = col.lower()
-                treatment_keywords = ['treat', 'treatment', 'd', 'dummy', 'indicator']
-                if any(keyword in col_lower for keyword in treatment_keywords):
+                if any(re.search(keyword, col_lower) for keyword in treatment_keywords):
                     result['has_treatment'] = True
                     break
     
     # Look for running variable-like variables (continuous, many unique values)
+    running_keywords = [r'\bscore\b', r'\brunning\b', r'\bindex\b',
+                       r'\bdistance\b', r'\bage\b']
     for col in cols:
         if pd.api.types.is_numeric_dtype(data[col]) and data[col].dtype != 'bool':
             n_unique = data[col].nunique()
             if n_unique > len(data) * 0.1:  # Many unique values
                 col_lower = col.lower()
-                running_keywords = ['score', 'running', 'index', 'distance', 'age']
-                if any(keyword in col_lower for keyword in running_keywords):
+                if any(re.search(keyword, col_lower) for keyword in running_keywords):
                     result['has_running'] = True
                     break
     
     # Look for instrument-like variables (would need domain knowledge, just check for common patterns)
     # This is heuristic - real instruments need economic reasoning
+    instrument_keywords = [r'\binstrument\b', r'\biv\b', r'\bz\b',
+                          r'\bexcluded\b']
     for col in cols:
         col_lower = col.lower()
-        instrument_keywords = ['instrument', 'iv', 'z', 'excluded']
-        if any(keyword in col_lower for keyword in instrument_keywords):
+        if any(re.search(keyword, col_lower) for keyword in instrument_keywords):
             result['has_instruments'] = True
             break
     
@@ -158,35 +168,42 @@ def classify_research_question(question: str) -> Dict[str, Any]:
         'suggested_methods': []
     }
     
-    # Causal inference keywords
-    causal_keywords = ['effect', 'impact', 'causal', 'treatment', 'intervention', 'policy',
-                      'cause', 'influence', 'attributable', 'due to', 'result of']
-    treatment_keywords = ['treatment', 'intervention', 'policy', 'program', 'reform']
-    time_keywords = ['before', 'after', 'change', 'over time', 'trend', 'period']
-    
+    # Causal inference keywords (using word boundaries for precise matching)
+    causal_keywords = [r'\beffect\b', r'\bimpact\b', r'\bcausal\b', r'\btreatment\b',
+                      r'\bintervention\b', r'\bpolicy\b', r'\bcause\b', r'\binfluence\b',
+                      r'\battributable\b', r'\bdue to\b', r'\bresult of\b']
+    treatment_keywords = [r'\btreatment\b', r'\bintervention\b', r'\bpolicy\b',
+                         r'\bprogram\b', r'\breform\b']
+    time_keywords = [r'\bbefore\b', r'\bafter\b', r'\bchange\b', r'\bover time\b',
+                    r'\btrend\b', r'\bperiod\b']
+
     # Check for causal language
-    if any(keyword in question_lower for keyword in causal_keywords):
+    if any(re.search(keyword, question_lower) for keyword in causal_keywords):
         result['question_type'] = 'causal'
-        result['keywords'].extend([k for k in causal_keywords if k in question_lower])
-    
+        result['keywords'].extend([k.strip(r'\b') for k in causal_keywords
+                                  if re.search(k, question_lower)])
+
     # Check for treatment/intervention
-    if any(keyword in question_lower for keyword in treatment_keywords):
+    if any(re.search(keyword, question_lower) for keyword in treatment_keywords):
         result['has_treatment'] = True
-        result['keywords'].extend([k for k in treatment_keywords if k in question_lower])
-    
+        result['keywords'].extend([k.strip(r'\b') for k in treatment_keywords
+                                  if re.search(k, question_lower)])
+
     # Check for time variation
-    if any(keyword in question_lower for keyword in time_keywords):
+    if any(re.search(keyword, question_lower) for keyword in time_keywords):
         result['has_time_variation'] = True
-        result['keywords'].extend([k for k in time_keywords if k in question_lower])
-    
+        result['keywords'].extend([k.strip(r'\b') for k in time_keywords
+                                  if re.search(k, question_lower)])
+
     # Descriptive/predictive keywords
-    descriptive_keywords = ['describe', 'summarize', 'distribution', 'pattern', 'correlation']
-    predictive_keywords = ['predict', 'forecast', 'outcome', 'probability']
-    
-    if any(keyword in question_lower for keyword in descriptive_keywords):
+    descriptive_keywords = [r'\bdescribe\b', r'\bsummarize\b', r'\bdistribution\b',
+                           r'\bpattern\b', r'\bcorrelation\b']
+    predictive_keywords = [r'\bpredict\b', r'\bforecast\b', r'\boutcome\b', r'\bprobability\b']
+
+    if any(re.search(keyword, question_lower) for keyword in descriptive_keywords):
         if result['question_type'] == 'unclear':
             result['question_type'] = 'descriptive'
-    elif any(keyword in question_lower for keyword in predictive_keywords):
+    elif any(re.search(keyword, question_lower) for keyword in predictive_keywords):
         if result['question_type'] == 'unclear':
             result['question_type'] = 'predictive'
     

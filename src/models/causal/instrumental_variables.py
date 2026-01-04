@@ -8,8 +8,10 @@ from statsmodels.tools.tools import add_constant
 from scipy import stats
 import warnings
 
+from src.models.base import BaseEconometricModel, EstimationResult, create_estimation_result
 
-class InstrumentalVariables:
+
+class InstrumentalVariables(BaseEconometricModel):
     """Instrumental variables (IV) estimator with first-stage diagnostics.
     
     Estimates treatment effects using 2SLS (two-stage least squares)
@@ -33,7 +35,7 @@ class InstrumentalVariables:
         hc_type: Literal['HC1', 'HC2', 'HC3'] = 'HC1'
     ):
         """Initialize instrumental variables model.
-        
+
         Args:
             data: DataFrame containing outcome, treatment, instruments, and covariates
             outcome: Name of outcome variable
@@ -42,30 +44,27 @@ class InstrumentalVariables:
             covariates: Optional list of covariate variable names
             hc_type: Type of heteroskedasticity-consistent standard errors
         """
-        self.data = data.copy()  # Preserve original data
-        self.outcome = outcome
+        super().__init__(data=data, outcome=outcome)
         self.treatment = treatment
         self.instruments = instruments
         self.covariates = covariates if covariates else []
         self.hc_type = hc_type
         self.first_stage_results = None
-        self.results = None
         self.reduced_form_results = None
-        
+        self._first_stage_cache = None  # Cache first-stage results
+
         # Validate required columns
         required_cols = [outcome, treatment] + instruments + self.covariates
-        missing = [col for col in required_cols if col not in data.columns]
-        if missing:
-            raise ValueError(f"Missing required columns: {missing}")
-        
+        self._validate_columns(required_cols)
+
         if len(instruments) < 1:
             raise ValueError("At least one instrument is required")
     
     def estimate_first_stage(self) -> Dict[str, Any]:
         """Estimate first-stage regression.
-        
+
         First stage: Treatment = f(Instruments, Covariates)
-        
+
         Returns:
             Dictionary containing:
                 - coefficients: First-stage coefficients
@@ -76,45 +75,45 @@ class InstrumentalVariables:
                 - f_pvalue: F-statistic p-value
                 - nobs: Number of observations
         """
+        # Return cached result if available
+        if self._first_stage_cache is not None:
+            return self._first_stage_cache
+
         # Prepare data
         y_first = self.data[self.treatment].dropna()
         X_first = self.data[self.instruments + self.covariates].dropna()
-        
+
         # Align indices
         common_idx = y_first.index.intersection(X_first.index)
         y_first = y_first.loc[common_idx]
         X_first = X_first.loc[common_idx]
-        
+
         # Add constant
         X_first = add_constant(X_first)
-        
+
         # Estimate first stage
         model_first = OLS(y_first, X_first)
         self.first_stage_results = model_first.fit(cov_type=self.hc_type)
-        
+
         # Calculate F-statistic for instruments (joint significance)
-        # F = (R² / (1-R²)) × ((n-k-1) / k_instruments)
-        # Or use Wald test for joint significance of instruments
         n = self.first_stage_results.nobs
         k_instruments = len(self.instruments)
         k_total = len(self.first_stage_results.params) - 1  # Excluding constant
-        k_covariates = len(self.covariates)
         k_exog = k_total
-        
+
         # R-squared from first stage
         rsquared = self.first_stage_results.rsquared
-        
+
         # F-statistic for instruments (Wald test)
-        # Test H0: all instrument coefficients = 0
         instrument_params = self.first_stage_results.params[self.instruments]
         instrument_cov = self.first_stage_results.cov_params().loc[
             self.instruments, self.instruments
         ]
-        
+
         # Wald test statistic: β' * (Var(β))^{-1} * β ~ χ²(k_instruments)
         try:
             wald_stat = float(instrument_params.T @ np.linalg.inv(instrument_cov) @ instrument_params)
-            f_statistic = wald_stat / k_instruments  # Approximate F-statistic
+            f_statistic = wald_stat / k_instruments
             f_pvalue = 1 - stats.f.cdf(f_statistic, k_instruments, n - k_exog - 1)
         except (np.linalg.LinAlgError, ValueError):
             # Fallback: use R-squared formula
@@ -123,8 +122,9 @@ class InstrumentalVariables:
             else:
                 f_statistic = np.inf
             f_pvalue = 1 - stats.f.cdf(f_statistic, k_instruments, n - k_exog - 1) if np.isfinite(f_statistic) else 0.0
-        
-        return {
+
+        # Cache result
+        self._first_stage_cache = {
             'coefficients': self.first_stage_results.params.to_dict(),
             'std_errors': self.first_stage_results.bse.to_dict(),
             'pvalues': self.first_stage_results.pvalues.to_dict(),
@@ -133,31 +133,31 @@ class InstrumentalVariables:
             'f_pvalue': float(f_pvalue),
             'nobs': int(n)
         }
+        return self._first_stage_cache
     
-    def estimate(self) -> Dict[str, float]:
+    def estimate(self) -> EstimationResult:
         """Estimate 2SLS (two-stage least squares).
-        
+
         Returns:
-            Dictionary containing:
-                - coefficient: IV estimate (β)
-                - std_error: Standard error
-                - pvalue: P-value
-                - ci_lower: Lower 95% confidence interval
-                - ci_upper: Upper 95% confidence interval
+            EstimationResult with:
+                - coefficients: {treatment: IV estimate}
+                - std_errors: {treatment: standard error}
+                - pvalues: {treatment: p-value}
+                - ci_lower/ci_upper: Confidence intervals
                 - nobs: Number of observations
-                - first_stage_f: First-stage F-statistic
+                - fit_stats: rsquared, first_stage_f, first_stage_rsquared
+                - diagnostics: hc_type, n_instruments, is_overidentified
         """
         # Estimate first stage if not already done
-        if self.first_stage_results is None:
-            self.estimate_first_stage()
-        
+        first_stage = self.estimate_first_stage()
+
         # Get first-stage fitted values (predicted treatment)
         y_first = self.data[self.treatment].dropna()
         X_first = self.data[self.instruments + self.covariates].dropna()
         common_idx = y_first.index.intersection(X_first.index)
         X_first_aligned = add_constant(X_first.loc[common_idx])
         treatment_predicted = self.first_stage_results.fittedvalues
-        
+
         # Prepare second stage
         y_second = self.data[self.outcome].loc[common_idx].dropna()
         X_second = pd.concat([
@@ -166,27 +166,29 @@ class InstrumentalVariables:
         ], axis=1)
         X_second.columns = [self.treatment] + self.covariates if self.covariates else [self.treatment]
         X_second = add_constant(X_second)
-        
+
         # Align indices
         common_idx_second = y_second.index.intersection(X_second.index)
         y_second = y_second.loc[common_idx_second]
         X_second = X_second.loc[common_idx_second]
-        
+
         # Estimate second stage
         model_second = OLS(y_second, X_second)
         self.results = model_second.fit(cov_type=self.hc_type)
-        
+        self._estimated = True
+
         # Extract IV coefficient (treatment effect)
         iv_coef = self.results.params[self.treatment]
         iv_se = self.results.bse[self.treatment]
         iv_pval = self.results.pvalues[self.treatment]
-        
+        iv_tval = self.results.tvalues[self.treatment]
+
         # Confidence interval
         ci = self.results.conf_int().loc[self.treatment]
-        
+
         # Get first-stage F-statistic
-        first_stage_f = self.estimate_first_stage()['f_statistic']
-        
+        first_stage_f = first_stage['f_statistic']
+
         # Warn if weak instruments
         if first_stage_f < 10:
             warnings.warn(
@@ -194,16 +196,27 @@ class InstrumentalVariables:
                 "Consider using LIML or alternative instruments.",
                 UserWarning
             )
-        
-        return {
-            'coefficient': float(iv_coef),
-            'std_error': float(iv_se),
-            'pvalue': float(iv_pval),
-            'ci_lower': float(ci[0]),
-            'ci_upper': float(ci[1]),
-            'nobs': int(self.results.nobs),
-            'first_stage_f': float(first_stage_f)
-        }
+
+        return create_estimation_result(
+            coefficients={self.treatment: float(iv_coef)},
+            std_errors={self.treatment: float(iv_se)},
+            pvalues={self.treatment: float(iv_pval)},
+            tvalues={self.treatment: float(iv_tval)},
+            ci_lower={self.treatment: float(ci[0])},
+            ci_upper={self.treatment: float(ci[1])},
+            nobs=int(self.results.nobs),
+            model_type='iv',
+            fit_stats={
+                'rsquared': float(self.results.rsquared),
+                'first_stage_f': float(first_stage_f),
+                'first_stage_rsquared': float(first_stage['rsquared']),
+            },
+            diagnostics={
+                'hc_type': self.hc_type,
+                'n_instruments': len(self.instruments),
+                'is_overidentified': len(self.instruments) > 1,
+            }
+        )
     
     def test_weak_instruments(self) -> Dict[str, float]:
         """Test for weak instruments.
@@ -328,12 +341,11 @@ class InstrumentalVariables:
     
     def summary(self) -> str:
         """Generate summary of IV estimation results.
-        
+
         Returns:
             Formatted summary string
         """
-        if self.results is None:
-            raise ValueError("Model not estimated. Call estimate() first.")
+        self._check_estimated()
         
         summary_lines = []
         summary_lines.append("=" * 80)

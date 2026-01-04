@@ -16,5 +16,5 @@ scikit-learn>=1.3.0
 pyarrow>=14.0.0
 
 # Corpus tools (for Wooldridge textbook analysis)
-sentence-transformers>=2.2.0
+# Simple markdown search - no heavy dependencies needed
 

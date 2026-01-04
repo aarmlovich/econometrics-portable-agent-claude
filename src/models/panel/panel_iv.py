@@ -3,12 +3,54 @@
 from typing import Optional, List, Dict, Any
 import numpy as np
 import pandas as pd
-from linearmodels.panel import PanelIV
 from scipy import stats
 import warnings
 
+# Check if PanelIV is available in linearmodels
+_USE_IV2SLS_FALLBACK = False
+try:
+    from linearmodels.panel.iv import PanelIV as LMPanelIV
+except ImportError:
+    # Fallback: Use IV2SLS with manual demeaning for fixed effects
+    from linearmodels.iv import IV2SLS
+    _USE_IV2SLS_FALLBACK = True
 
-class PanelIV:
+from src.models.base import BaseEconometricModel, EstimationResult, create_estimation_result
+
+
+def _demean_panel(data: pd.DataFrame, columns: List[str], entity_effects: bool, time_effects: bool) -> pd.DataFrame:
+    """Apply within transformation (demeaning) for fixed effects.
+
+    Args:
+        data: Panel data with MultiIndex (entity, time)
+        columns: Columns to demean
+        entity_effects: If True, demean by entity
+        time_effects: If True, demean by time
+
+    Returns:
+        Demeaned DataFrame
+    """
+    result = data[columns].copy()
+
+    if entity_effects:
+        # Demean by entity (within transformation)
+        entity_means = result.groupby(level=0).transform('mean')
+        result = result - entity_means
+
+    if time_effects:
+        # Demean by time
+        time_means = result.groupby(level=1).transform('mean')
+        result = result - time_means
+
+    # Add back grand mean if both effects (to avoid double-demeaning bias)
+    if entity_effects and time_effects:
+        grand_mean = data[columns].mean()
+        result = result + grand_mean
+
+    return result
+
+
+class PanelIV(BaseEconometricModel):
     """Panel IV estimator with fixed effects and first-stage diagnostics.
     
     Estimates treatment effects using 2SLS in panel data setting with
@@ -37,7 +79,7 @@ class PanelIV:
         cluster_se: bool = True
     ):
         """Initialize panel IV model.
-        
+
         Args:
             data: Panel data DataFrame
             outcome: Name of outcome variable
@@ -50,8 +92,7 @@ class PanelIV:
             time_effects: If True, include time fixed effects
             cluster_se: If True, cluster standard errors at entity level
         """
-        self.data = data.copy()  # Preserve original data
-        self.outcome = outcome
+        super().__init__(data=data, outcome=outcome)
         self.treatment = treatment
         self.instruments = instruments
         self.entity = entity
@@ -61,18 +102,16 @@ class PanelIV:
         self.time_effects = time_effects
         self.cluster_se = cluster_se
         self.first_stage_results = None
-        self.results = None
         self.reduced_form_results = None
-        
+        self._first_stage_cache = None
+
         # Validate required columns
         required_cols = [outcome, treatment, entity, time] + instruments + self.covariates
-        missing = [col for col in required_cols if col not in data.columns]
-        if missing:
-            raise ValueError(f"Missing required columns: {missing}")
-        
+        self._validate_columns(required_cols)
+
         if len(instruments) < 1:
             raise ValueError("At least one instrument is required")
-        
+
         # Set up panel index
         self.data = self.data.set_index([entity, time])
         self.data = self.data.sort_index()
@@ -144,50 +183,92 @@ class PanelIV:
             'nobs': int(n)
         }
     
-    def estimate(self) -> Dict[str, float]:
+    def estimate(self) -> EstimationResult:
         """Estimate panel IV (2SLS) with fixed effects.
-        
+
         Returns:
-            Dictionary containing IV estimates and diagnostics
+            EstimationResult with IV estimates and diagnostics
         """
         # Prepare data
         y = self.data[self.outcome]
         X = self.data[[self.treatment] + self.covariates]
         Z = self.data[self.instruments]
-        
+
         # Drop missing values
         model_data = pd.concat([y, X, Z], axis=1).dropna()
         y = model_data[self.outcome]
         X = model_data[[self.treatment] + self.covariates]
         Z = model_data[self.instruments]
-        
-        # Estimate panel IV
-        model = PanelIV(
-            dependent=y,
-            exog=X,
-            endog=self.treatment,
-            instruments=Z,
-            entity_effects=self.entity_effects,
-            time_effects=self.time_effects
-        )
-        
-        if self.cluster_se:
-            self.results = model.fit(cov_type='clustered', cluster_entity=True)
+
+        if _USE_IV2SLS_FALLBACK:
+            # Use IV2SLS with manual demeaning for fixed effects
+            all_cols = [self.outcome, self.treatment] + self.covariates + self.instruments
+
+            # Demean data for fixed effects
+            if self.entity_effects or self.time_effects:
+                demeaned = _demean_panel(model_data, all_cols, self.entity_effects, self.time_effects)
+                y = demeaned[self.outcome]
+                X = demeaned[[self.treatment] + self.covariates]
+                Z = demeaned[self.instruments]
+                # Reset index for IV2SLS (expects flat index)
+                y = y.reset_index(drop=True)
+                X = X.reset_index(drop=True)
+                Z = Z.reset_index(drop=True)
+
+            # IV2SLS expects: dependent, exog (exogenous regressors), endog (endogenous), instruments
+            # exog = covariates (if any), endog = treatment, instruments = Z
+            from statsmodels.tools.tools import add_constant
+            if self.covariates:
+                exog = add_constant(X[self.covariates])
+            else:
+                exog = add_constant(pd.DataFrame(index=y.index))
+            endog = X[[self.treatment]]
+            instruments = Z
+
+            model = IV2SLS(dependent=y, exog=exog, endog=endog, instruments=instruments)
+            if self.cluster_se:
+                # IV2SLS uses different clustering approach - use robust as approximation
+                self.results = model.fit(cov_type='robust')
+            else:
+                self.results = model.fit()
         else:
-            self.results = model.fit()
-        
+            # Use native PanelIV from linearmodels
+            model = LMPanelIV(
+                dependent=y,
+                exog=X,
+                endog=self.treatment,
+                instruments=Z,
+                entity_effects=self.entity_effects,
+                time_effects=self.time_effects
+            )
+
+            if self.cluster_se:
+                self.results = model.fit(cov_type='clustered', cluster_entity=True)
+            else:
+                self.results = model.fit()
+
+        self._estimated = True
+
         # Get first-stage F-statistic
         first_stage = self.estimate_first_stage()
         first_stage_f = first_stage['f_statistic']
-        
-        # Extract IV coefficient
+
+        # Extract IV coefficient - handle both PanelIV and IV2SLS result formats
         iv_coef = self.results.params[self.treatment]
         iv_se = self.results.std_errors[self.treatment]
         iv_pval = self.results.pvalues[self.treatment]
-        
+        iv_tval = self.results.tstats[self.treatment]
+
         # Confidence interval
         ci = self.results.conf_int().loc[self.treatment]
-        
+        ci_low = float(ci.iloc[0]) if hasattr(ci, 'iloc') else float(ci[0])
+        ci_high = float(ci.iloc[1]) if hasattr(ci, 'iloc') else float(ci[1])
+
+        # Get fit statistics - handle differences between PanelIV and IV2SLS
+        rsquared = float(self.results.rsquared)
+        # IV2SLS doesn't have rsquared_within, use rsquared as fallback
+        rsquared_within = float(getattr(self.results, 'rsquared_within', rsquared))
+
         # Warn if weak instruments
         if first_stage_f < 10:
             warnings.warn(
@@ -195,18 +276,29 @@ class PanelIV:
                 "Consider using LIML or alternative instruments.",
                 UserWarning
             )
-        
-        return {
-            'coefficient': float(iv_coef),
-            'std_error': float(iv_se),
-            'pvalue': float(iv_pval),
-            'ci_lower': float(ci[0]),
-            'ci_upper': float(ci[1]),
-            'nobs': int(self.results.nobs),
-            'first_stage_f': float(first_stage_f),
-            'rsquared': float(self.results.rsquared),
-            'rsquared_within': float(self.results.rsquared_within)
-        }
+
+        return create_estimation_result(
+            coefficients={self.treatment: float(iv_coef)},
+            std_errors={self.treatment: float(iv_se)},
+            pvalues={self.treatment: float(iv_pval)},
+            tvalues={self.treatment: float(iv_tval)},
+            ci_lower={self.treatment: ci_low},
+            ci_upper={self.treatment: ci_high},
+            nobs=int(self.results.nobs),
+            model_type='panel_iv',
+            fit_stats={
+                'rsquared': rsquared,
+                'rsquared_within': rsquared_within,
+                'first_stage_f': float(first_stage_f),
+            },
+            diagnostics={
+                'entity_effects': self.entity_effects,
+                'time_effects': self.time_effects,
+                'cluster_se': self.cluster_se,
+                'n_instruments': len(self.instruments),
+                'using_iv2sls_fallback': _USE_IV2SLS_FALLBACK,
+            }
+        )
     
     def test_weak_instruments(self) -> Dict[str, float]:
         """Test for weak instruments using first-stage F-statistic.
@@ -305,12 +397,11 @@ class PanelIV:
     
     def summary(self) -> str:
         """Generate summary of panel IV estimation results.
-        
+
         Returns:
             Formatted summary string
         """
-        if self.results is None:
-            raise ValueError("Model not estimated. Call estimate() first.")
+        self._check_estimated()
         
         summary_lines = []
         summary_lines.append("=" * 80)

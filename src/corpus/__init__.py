@@ -2,15 +2,14 @@
 
 from src.corpus.wooldridge_analyzer import WooldridgeAnalyzer
 from src.corpus.wooldridge_index import WooldridgeIndexer
-from src.corpus.wooldridge_embeddings import WooldridgeEmbeddings
-from src.corpus.wooldridge_retriever import WooldridgeRetriever
+from src.corpus.wooldridge_search import WooldridgeSearch, search_wooldridge, get_chapter, get_methodology_guidance
 from src.corpus.agent_integration import (
     get_wooldridge_perspective,
     triangulate_methodology,
     format_perspective_response,
     semantic_search_wooldridge,
     lookup_topic_wooldridge,
-    get_methodology_guidance,
+    get_methodology_guidance as get_methodology_guidance_full,
 )
 from src.corpus.agent_helpers import (
     quick_lookup,
@@ -41,8 +40,9 @@ from src.corpus.validation_report import ValidationReport
 __all__ = [
     "WooldridgeAnalyzer",
     "WooldridgeIndexer",
-    "WooldridgeEmbeddings",
-    "WooldridgeRetriever",
+    "WooldridgeSearch",
+    "search_wooldridge",
+    "get_chapter",
     # Agent integration
     "get_wooldridge_perspective",
     "triangulate_methodology",
@@ -50,6 +50,7 @@ __all__ = [
     "semantic_search_wooldridge",
     "lookup_topic_wooldridge",
     "get_methodology_guidance",
+    "get_methodology_guidance_full",
     # Agent helpers
     "quick_lookup",
     "get_standard_error_guidance",

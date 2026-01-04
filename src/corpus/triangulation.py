@@ -4,15 +4,14 @@ import re
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from src.corpus.agent_integration import get_wooldridge_perspective, triangulate_methodology
-from src.corpus.wooldridge_retriever import WooldridgeRetriever
 
 
 def triangulate(methodology: str) -> Dict[str, Any]:
     """Full triangulation query comparing all three perspectives.
-    
+
     Args:
         methodology: Methodology name
-        
+
     Returns:
         Dictionary with:
             - methodology: Methodology name
@@ -23,15 +22,14 @@ def triangulate(methodology: str) -> Dict[str, Any]:
             - synthesis: Recommended approach
     """
     # Get cross-reference (includes all three)
-    retriever = WooldridgeRetriever()
-    cross_ref = retriever.cross_reference(methodology)
-    
+    cross_ref = triangulate_methodology(methodology)
+
     # Determine agreement level
     agreement_level = _determine_agreement_level(cross_ref)
-    
+
     # Generate synthesis
     synthesis = _generate_synthesis(cross_ref, agreement_level)
-    
+
     return {
         "methodology": methodology,
         "wooldridge": cross_ref.get("wooldridge", {}),

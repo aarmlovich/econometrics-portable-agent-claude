@@ -8,9 +8,12 @@ from statsmodels.tools.tools import add_constant
 from scipy import stats
 from scipy.stats import gaussian_kde
 import warnings
+import matplotlib.pyplot as plt
+
+from src.models.base import BaseEconometricModel, EstimationResult, create_estimation_result
 
 
-class RegressionDiscontinuity:
+class RegressionDiscontinuity(BaseEconometricModel):
     """Regression discontinuity design estimator with bandwidth selection.
     
     Estimates treatment effects using regression discontinuity design
@@ -33,7 +36,7 @@ class RegressionDiscontinuity:
         covariates: Optional[List[str]] = None
     ):
         """Initialize regression discontinuity model.
-        
+
         Args:
             data: DataFrame containing outcome, running variable, and covariates
             outcome: Name of outcome variable
@@ -44,8 +47,7 @@ class RegressionDiscontinuity:
             kernel: Kernel function ('triangular', 'uniform', 'epanechnikov')
             covariates: Optional list of covariate variable names
         """
-        self.data = data.copy()  # Preserve original data
-        self.outcome = outcome
+        super().__init__(data=data, outcome=outcome)
         self.running = running
         self.cutoff = cutoff
         self.bandwidth = bandwidth
@@ -53,19 +55,16 @@ class RegressionDiscontinuity:
         self.kernel = kernel
         self.covariates = covariates if covariates else []
         self.optimal_bandwidth = None
-        self.results = None
         self.robustness_results = None
-        
+
         # Validate required columns
         required_cols = [outcome, running] + self.covariates
-        missing = [col for col in required_cols if col not in data.columns]
-        if missing:
-            raise ValueError(f"Missing required columns: {missing}")
-        
+        self._validate_columns(required_cols)
+
         # Create treatment indicator
         self.data['treated'] = (self.data[running] >= cutoff).astype(int)
         self.data['running_centered'] = self.data[running] - cutoff
-        
+
         # Validate kernel
         valid_kernels = ['triangular', 'uniform', 'epanechnikov']
         if kernel not in valid_kernels:
@@ -205,79 +204,82 @@ class RegressionDiscontinuity:
         self.bandwidth = best_bandwidth
         return best_bandwidth
     
-    def estimate(self) -> Dict[str, float]:
+    def estimate(self) -> EstimationResult:
         """Estimate regression discontinuity treatment effect.
-        
+
         Returns:
-            Dictionary containing RD estimates and statistics
+            EstimationResult with RD estimates and statistics
         """
         # Select bandwidth if not provided
         if self.bandwidth is None:
             self.select_optimal_bandwidth()
-        
+
         # Prepare data
         data_clean = self.data[[self.outcome, 'running_centered', 'treated'] + self.covariates].dropna()
-        
+
         # Apply bandwidth (kernel weights)
         x_centered = data_clean['running_centered'].values
         weights = self._kernel_weight(x_centered, self.bandwidth)
-        
+
         # Only use observations within bandwidth
         mask = weights > 0
         data_used = data_clean[mask].copy()
         weights_used = weights[mask]
         x_used = data_used['running_centered'].values
-        
+
         if len(data_used) < 20:
             raise ValueError(f"Insufficient observations within bandwidth: {len(data_used)}")
-        
+
         # Create polynomial terms
         X_poly = np.column_stack([np.ones(len(x_used)), x_used])
         for p in range(2, self.polynomial + 1):
             X_poly = np.column_stack([X_poly, x_used**p])
-        
+
         # Add treatment indicator and interactions
         treated = data_used['treated'].values
         X = np.column_stack([X_poly, treated, treated * x_used])
         for p in range(2, self.polynomial + 1):
             X = np.column_stack([X, treated * (x_used**p)])
-        
+
         # Add covariates if present
         if self.covariates:
             X = np.column_stack([X, data_used[self.covariates].values])
-        
+
         y = data_used[self.outcome].values
-        
+
         # Weighted least squares
         W = np.diag(np.sqrt(weights_used))
         X_weighted = W @ X
         y_weighted = W @ y
-        
+
         # Estimate
         try:
             beta = np.linalg.lstsq(X_weighted, y_weighted, rcond=None)[0]
             residuals = y_weighted - X_weighted @ beta
-            
+
             # Standard errors (robust, using residuals)
             n = len(y)
             k = X.shape[1]
             sigma_sq = np.sum(residuals**2) / (n - k)
             var_beta = sigma_sq * np.linalg.inv(X_weighted.T @ X_weighted)
             se_beta = np.sqrt(np.diag(var_beta))
-            
+
             # Treatment effect is coefficient on 'treated'
             rd_coef = beta[self.polynomial + 1]  # After polynomial terms
             rd_se = se_beta[self.polynomial + 1]
             rd_tstat = rd_coef / rd_se if rd_se > 0 else np.nan
             rd_pval = 2 * (1 - stats.norm.cdf(np.abs(rd_tstat))) if not np.isnan(rd_tstat) else np.nan
-            
+
             # Confidence interval
             ci_lower = rd_coef - 1.96 * rd_se
             ci_upper = rd_coef + 1.96 * rd_se
-            
+
         except (np.linalg.LinAlgError, ValueError) as e:
             raise ValueError(f"Estimation failed: {e}")
-        
+
+        self._estimated = True
+
+        # Store for summary() access
         self.results = {
             'coefficient': float(rd_coef),
             'std_error': float(rd_se),
@@ -288,8 +290,25 @@ class RegressionDiscontinuity:
             'nobs': int(n),
             'polynomial': self.polynomial
         }
-        
-        return self.results
+
+        return create_estimation_result(
+            coefficients={'rd_effect': float(rd_coef)},
+            std_errors={'rd_effect': float(rd_se)},
+            pvalues={'rd_effect': float(rd_pval)},
+            tvalues={'rd_effect': float(rd_tstat)},
+            ci_lower={'rd_effect': float(ci_lower)},
+            ci_upper={'rd_effect': float(ci_upper)},
+            nobs=int(n),
+            model_type='rd',
+            fit_stats={
+                'bandwidth': float(self.bandwidth),
+            },
+            diagnostics={
+                'polynomial': self.polynomial,
+                'kernel': self.kernel,
+                'cutoff': self.cutoff,
+            }
+        )
     
     def test_manipulation(self) -> Dict[str, float]:
         """Test for manipulation at cutoff (McCrary density test).
@@ -394,31 +413,52 @@ class RegressionDiscontinuity:
     
     def summary(self) -> str:
         """Generate summary of RD estimation results.
-        
+
         Returns:
             Formatted summary string
         """
-        if self.results is None:
-            raise ValueError("Model not estimated. Call estimate() first.")
-        
+        self._check_estimated()
+
         summary_lines = []
         summary_lines.append("=" * 80)
         summary_lines.append("Regression Discontinuity Design Estimation Results")
         summary_lines.append("=" * 80)
         summary_lines.append("")
-        
+
         summary_lines.append(f"Cutoff: {self.cutoff}")
         summary_lines.append(f"Bandwidth: {self.results['bandwidth']:.4f}")
         summary_lines.append(f"Polynomial order: {self.results['polynomial']}")
         summary_lines.append(f"Kernel: {self.kernel}")
         summary_lines.append("")
-        
+
         summary_lines.append("Treatment Effect Estimate:")
         summary_lines.append(f"  Coefficient: {self.results['coefficient']:.4f}")
         summary_lines.append(f"  Std. Error: {self.results['std_error']:.4f}")
         summary_lines.append(f"  P-value: {self.results['pvalue']:.4f}")
         summary_lines.append(f"  95% CI: [{self.results['ci_lower']:.4f}, {self.results['ci_upper']:.4f}]")
         summary_lines.append(f"  Observations: {self.results['nobs']}")
-        
+
         return "\n".join(summary_lines)
+
+    def plot(
+        self,
+        ax: Optional[plt.Axes] = None,
+        figsize: tuple = (10, 6),
+        n_bins: int = 20
+    ) -> plt.Figure:
+        """Plot regression discontinuity design.
+
+        Shows outcome vs running variable with discontinuity at cutoff,
+        using binned scatter plot and fitted polynomial lines.
+
+        Args:
+            ax: Optional matplotlib axes to plot on
+            figsize: Figure size in inches
+            n_bins: Number of bins for binned scatter plot
+
+        Returns:
+            Matplotlib figure
+        """
+        from src.visualization.plots import plot_rd
+        return plot_rd(self, ax=ax, figsize=figsize, n_bins=n_bins)
 

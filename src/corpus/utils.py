@@ -18,9 +18,7 @@ def get_default_paths(project_root: Optional[Path] = None) -> dict:
 
     return {
         "extracts_dir": project_root / "docs" / "wooldridge_extracts",
-        "embeddings_dir": project_root / "data" / "corpus" / "wooldridge_embeddings",
         "index_dir": project_root / "data" / "corpus" / "wooldridge_index",
-        "embeddings_file": project_root / "data" / "corpus" / "wooldridge_embeddings" / "embeddings.json",
         "index_file": project_root / "data" / "corpus" / "wooldridge_index" / "index.json",
         "cross_refs_file": project_root / "data" / "corpus" / "wooldridge_index" / "cross_references.json",
         "analysis_file": project_root / "data" / "corpus" / "wooldridge_index" / "analysis.json",

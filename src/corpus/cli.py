@@ -8,18 +8,17 @@ from typing import Optional
 
 from src.corpus.wooldridge_analyzer import WooldridgeAnalyzer
 from src.corpus.wooldridge_index import WooldridgeIndexer
-from src.corpus.wooldridge_embeddings import WooldridgeEmbeddings
-from src.corpus.wooldridge_retriever import WooldridgeRetriever
+from src.corpus.wooldridge_search import WooldridgeSearch
 from src.corpus.utils import get_default_paths
 from src.corpus.validation import Validation
 
 
-def build_corpus(args):
-    """Build corpus from markdown files."""
+def build_index(args):
+    """Build topic index from markdown files (no embeddings)."""
     paths = get_default_paths(args.project_root)
 
     print("=" * 60)
-    print("Building Wooldridge Corpus")
+    print("Building Wooldridge Index")
     print("=" * 60)
 
     # Step 1: Analyze markdown files
@@ -49,164 +48,122 @@ def build_corpus(args):
         methodology_map, paths["methodology_map_file"]
     )
 
-    # Step 3: Generate embeddings
-    print("\nStep 4: Generating embeddings...")
-    embeddings_gen = WooldridgeEmbeddings()
-    embedded_chunks = embeddings_gen.process_analyzed_content(analyzed_content)
-    print(f"Generated {len(embedded_chunks)} embedded chunks")
-
-    # Save embeddings
-    paths["embeddings_dir"].mkdir(parents=True, exist_ok=True)
-    embeddings_gen.save_embeddings(embedded_chunks, paths["embeddings_file"])
-
     print("\n" + "=" * 60)
-    print("Corpus build complete!")
+    print("Index build complete!")
     print("=" * 60)
     print(f"  Analysis: {paths['analysis_file']}")
     print(f"  Index: {paths['index_file']}")
     print(f"  Cross-references: {paths['cross_refs_file']}")
-    print(f"  Embeddings: {paths['embeddings_file']}")
+    print(f"  Methodology map: {paths['methodology_map_file']}")
+    print("\nNote: No embeddings generated - using simple markdown search instead.")
 
 
 def search_corpus(args):
-    """Search corpus using semantic search."""
-    paths = get_default_paths(args.project_root)
-
-    retriever = WooldridgeRetriever(
-        embeddings_path=paths["embeddings_file"],
-        index_path=paths["index_file"],
-        cross_refs_path=paths["cross_refs_file"],
-        project_root=args.project_root,
-    )
+    """Search corpus using keyword-based search."""
+    searcher = WooldridgeSearch()
 
     print(f"\nSearching for: '{args.query}'")
     print("=" * 60)
 
-    results = retriever.semantic_search(args.query, top_k=args.top_k)
+    results = searcher.search_wooldridge(args.query, top_k=args.top_k)
+
+    if not results:
+        print("No results found.")
+        return
 
     for i, result in enumerate(results, 1):
-        print(f"\nResult {i} (relevance: {result['relevance_score']:.3f}):")
-        print(f"  File: {result['metadata']['file_name']}")
-        if result['metadata'].get('section_title'):
-            print(f"  Section: {result['metadata']['section_title']}")
-        if result['metadata'].get('page'):
-            print(f"  Page: {result['metadata']['page']}")
+        print(f"\nResult {i} (relevance: {result['relevance_score']:.1f}):")
+        print(f"  File: {result['file_name']}")
+        print(f"  Section: {result['title']}")
         print(f"  Content preview:")
-        content_preview = result['content'][:300]
-        print(f"    {content_preview}...")
+        print(f"    {result['content'][:300]}...")
 
 
 def lookup_topic(args):
     """Lookup topic in corpus."""
-    paths = get_default_paths(args.project_root)
-
-    retriever = WooldridgeRetriever(
-        embeddings_path=paths["embeddings_file"],
-        index_path=paths["index_file"],
-        cross_refs_path=paths["cross_refs_file"],
-        project_root=args.project_root,
-    )
+    searcher = WooldridgeSearch()
 
     print(f"\nLooking up topic: '{args.topic}'")
     print("=" * 60)
 
-    result = retriever.lookup_topic(args.topic)
+    # Get chapter content for topic
+    chapter_content = searcher.get_chapter(args.topic)
 
-    if result.get("methodologies"):
-        print(f"\nFound {len(result['methodologies'])} methodology references:")
-        for meth in result["methodologies"][:args.limit]:
-            print(f"  - {meth['file_name']}: {meth.get('section', 'N/A')}")
+    print("\nChapter Content:")
+    print(chapter_content[:1000])
+    if len(chapter_content) > 1000:
+        print(f"\n... ({len(chapter_content) - 1000} more characters)")
 
-    if result.get("sections"):
-        print(f"\nFound {len(result['sections'])} topic sections:")
-        for section in result["sections"][:args.limit]:
-            print(f"  - {section['file_name']}: {section.get('section', 'N/A')}")
+    # Also search for related content
+    print(f"\n\nRelated sections:")
+    results = searcher.search_wooldridge(args.topic, top_k=args.limit)
 
-    if result.get("priority"):
-        print(f"\nPriority area: {result['priority']}")
+    for i, result in enumerate(results, 1):
+        print(f"\n{i}. {result['title']}")
+        print(f"   File: {result['file_name']}")
+        print(f"   Preview: {result['content'][:150]}...")
 
 
 def compare_perspectives(args):
     """Compare Wooldridge perspective with Hansen/Angrist."""
     paths = get_default_paths(args.project_root)
-
-    retriever = WooldridgeRetriever(
-        embeddings_path=paths["embeddings_file"],
-        index_path=paths["index_file"],
-        cross_refs_path=paths["cross_refs_file"],
-        project_root=args.project_root,
-    )
+    searcher = WooldridgeSearch()
 
     print(f"\nComparing perspectives on: '{args.methodology}'")
     print("=" * 60)
 
-    result = retriever.cross_reference(args.methodology)
-
-    # Wooldridge perspective
+    # Get Wooldridge perspective via search
     print("\nWooldridge Perspective:")
-    if result["wooldridge"].get("sections"):
-        print(f"  Found {len(result['wooldridge']['sections'])} references")
-        for section in result["wooldridge"]["sections"][:3]:
-            print(f"    - {section['file_name']}: {section.get('section', 'N/A')}")
+    guidance = searcher.get_methodology_guidance(args.methodology)
+    print(guidance)
 
-    if result["wooldridge"].get("perspective"):
-        print(f"  Recommendations found: {len(result['wooldridge']['perspective'])}")
+    # Load cross-references if available
+    if paths["cross_refs_file"].exists():
+        import json
+        with open(paths["cross_refs_file"], 'r', encoding='utf-8') as f:
+            cross_refs = json.load(f)
 
-    # Hansen perspective
-    if result.get("hansen"):
-        print("\nHansen Evaluation:")
-        print(f"  File: {result['hansen']['file']}")
-        if result["hansen"].get("mentions"):
-            print(f"  Mentions: {len(result['hansen']['mentions'])}")
+        if args.methodology in cross_refs:
+            cross_ref = cross_refs[args.methodology]
 
-    # Angrist perspective
-    if result.get("angrist"):
-        print("\nAngrist Evaluation:")
-        print(f"  File: {result['angrist']['file']}")
-        if result["angrist"].get("mentions"):
-            print(f"  Mentions: {len(result['angrist']['mentions'])}")
+            # Hansen perspective
+            if cross_ref.get("hansen_evaluation"):
+                print("\nHansen Evaluation:")
+                print(f"  File: {cross_ref['hansen_evaluation'].get('file', 'N/A')}")
 
-    # Agent rules
-    if result.get("agent_rules"):
-        print("\nAgent Rules:")
-        for rule in result["agent_rules"]:
-            print(f"  - {rule}")
+            # Angrist perspective
+            if cross_ref.get("angrist_evaluation"):
+                print("\nAngrist Evaluation:")
+                print(f"  File: {cross_ref['angrist_evaluation'].get('file', 'N/A')}")
+
+            # Agent rules
+            if cross_ref.get("agent_rules"):
+                print("\nAgent Rules:")
+                for rule in cross_ref["agent_rules"]:
+                    print(f"  - {rule}")
+    else:
+        print("\nNote: Cross-references not built. Run 'build-index' first.")
 
 
 def find_perspective(args):
     """Find Wooldridge's perspective on a methodology."""
-    paths = get_default_paths(args.project_root)
-
-    retriever = WooldridgeRetriever(
-        embeddings_path=paths["embeddings_file"],
-        index_path=paths["index_file"],
-        cross_refs_path=paths["cross_refs_file"],
-        project_root=args.project_root,
-    )
+    searcher = WooldridgeSearch()
 
     print(f"\nFinding Wooldridge's perspective on: '{args.methodology}'")
     print("=" * 60)
 
-    result = retriever.find_perspective(args.methodology)
+    # Get methodology guidance
+    guidance = searcher.get_methodology_guidance(args.methodology)
+    print(guidance)
 
-    if result.get("sections"):
-        print(f"\nFound {len(result['sections'])} sections:")
-        for section in result["sections"][:args.limit]:
-            print(f"\n  File: {section['file_name']}")
-            print(f"  Section: {section.get('section', 'N/A')}")
-            if section.get('page'):
-                print(f"  Page: {section['page']}")
-            print(f"  Context: {section.get('context', '')[:200]}...")
+    # Additional search results
+    print(f"\n\nAdditional context:")
+    results = searcher.search_wooldridge(args.methodology, top_k=args.limit)
 
-    if result.get("wooldridge_perspective"):
-        print(f"\nPerspectives/Recommendations:")
-        for perspective in result["wooldridge_perspective"][:args.limit]:
-            print(f"\n  Context: {perspective['context'][:300]}...")
-            if perspective.get('section'):
-                print(f"  Section: {perspective['section']}")
-
-    if result.get("cross_references"):
-        print(f"\nCross-references available")
+    for i, result in enumerate(results, 1):
+        print(f"\n{i}. {result['title']}")
+        print(f"   File: {result['file_name']}")
+        print(f"   Content: {result['content'][:250]}...")
 
 
 def validate_all(args):
@@ -380,15 +337,15 @@ def main():
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # Build corpus command
+    # Build index command (no embeddings)
     build_parser = subparsers.add_parser(
-        "build", help="Build corpus from markdown files"
+        "build-index", help="Build topic index from markdown files (no embeddings)"
     )
-    build_parser.set_defaults(func=build_corpus)
+    build_parser.set_defaults(func=build_index)
 
     # Search command
     search_parser = subparsers.add_parser(
-        "search", help="Semantic search in corpus"
+        "search", help="Keyword search in corpus"
     )
     search_parser.add_argument("query", help="Search query")
     search_parser.add_argument(

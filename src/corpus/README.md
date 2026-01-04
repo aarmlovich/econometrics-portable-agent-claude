@@ -6,7 +6,7 @@ Tools for analyzing and retrieving content from Wooldridge's "Econometric Analys
 
 The corpus tools enable:
 - **Content Analysis**: Extract structured content, methodologies, and perspectives from markdown files
-- **Semantic Search**: Find relevant sections using vector embeddings
+- **Keyword Search**: Find relevant sections using simple text search
 - **Topic Lookup**: Direct access to content by methodology or topic
 - **Cross-Referencing**: Link Wooldridge content to Hansen/Angrist evaluations and agent rules
 
@@ -26,38 +26,33 @@ Builds structured indices:
 - By priority area
 - Cross-references to evaluation documents and agent rules
 
-### WooldridgeEmbeddings
-Generates vector embeddings for semantic search:
-- Chunks content into searchable segments
-- Creates embeddings using sentence-transformers
-- Stores embeddings with metadata
-
-### WooldridgeRetriever
-Provides search and retrieval interfaces:
-- Semantic search via vector similarity
+### WooldridgeSearch
+Provides simple keyword-based search and retrieval:
+- Keyword search with relevance scoring
 - Topic-based lookup
 - Perspective finding
-- Cross-reference queries
+- Methodology-specific guidance
 
 ## Usage
 
-### Building the Corpus
+### Building the Index
 
 ```bash
-python -m src.corpus.cli build
+python -m src.corpus.cli build-index
 ```
 
 This will:
 1. Analyze all markdown files in `docs/wooldridge_extracts/`
 2. Build topic indices
 3. Create cross-references
-4. Generate embeddings
-5. Save everything to `data/corpus/`
+4. Save everything to `data/corpus/wooldridge_index/`
+
+Note: No embeddings are generated - the system uses simple markdown search.
 
 ### Searching the Corpus
 
 ```bash
-# Semantic search
+# Keyword search
 python -m src.corpus.cli search "fixed effects panel data" --top-k 5
 
 # Topic lookup
@@ -73,30 +68,25 @@ python -m src.corpus.cli compare "fixed effects"
 ### Programmatic Usage
 
 ```python
-from src.corpus import WooldridgeRetriever
+from src.corpus import WooldridgeSearch
 
-# Initialize retriever
-retriever = WooldridgeRetriever()
+# Initialize search
+searcher = WooldridgeSearch()
 
-# Semantic search
-results = retriever.semantic_search("fixed effects estimation", top_k=5)
+# Keyword search
+results = searcher.search_wooldridge("fixed effects estimation", top_k=5)
 
-# Topic lookup
-topic_info = retriever.lookup_topic("panel_data")
+# Get chapter content
+chapter = searcher.get_chapter("panel data")
 
-# Find perspective
-perspective = retriever.find_perspective("clustered standard errors")
-
-# Cross-reference
-comparison = retriever.cross_reference("fixed effects")
+# Get methodology guidance
+guidance = searcher.get_methodology_guidance("clustered standard errors")
 ```
 
 ## File Structure
 
 ```
 data/corpus/
-├── wooldridge_embeddings/
-│   └── embeddings.json          # Vector embeddings
 └── wooldridge_index/
     ├── index.json                # Topic indices
     ├── cross_references.json     # Cross-reference mappings
@@ -114,15 +104,14 @@ The corpus enables the agent to:
 
 ## Dependencies
 
-- `sentence-transformers`: For generating embeddings (local, no API required)
-- `numpy`: For vector operations
-- Standard library: `json`, `pathlib`, `re`
+- Standard library only: `json`, `pathlib`, `re`
+- No heavy ML dependencies needed
 
 ## Notes
 
-- Embeddings use the `all-MiniLM-L6-v2` model by default (384 dimensions)
-- Corpus build time depends on number of markdown files (~80+ files)
-- Embeddings are stored as JSON (can be large, consider compression for production)
-
+- Uses simple keyword matching and section headers, not vector similarity
+- Fast and lightweight - no model loading required
+- Search is based on exact and partial keyword matches
+- Results are ranked by keyword frequency and title matches
 
 

@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import json
 
+from src import __version__
 from src.data.loaders import load_data, validate_data_structure
 from src.models.regression.ols import OLSRegression
 from src.models.causal.diff_in_diff import DifferenceInDifferences
@@ -18,13 +19,21 @@ from src.models.panel.fixed_effects import FixedEffects
 from src.models.panel.random_effects import RandomEffects
 from src.models.panel.panel_iv import PanelIV
 
+# Global verbosity flag
+VERBOSE = True
+
 
 def run_analysis(args):
     """Run econometric analysis based on method specified."""
+    global VERBOSE
+    VERBOSE = not args.quiet
+
     # Load data
-    print(f"Loading data from {args.data}...")
+    if VERBOSE:
+        print(f"Loading data from {args.data}...")
     data = load_data(args.data)
-    print(f"Loaded {len(data)} observations with {len(data.columns)} variables.")
+    if VERBOSE:
+        print(f"Loaded {len(data)} observations with {len(data.columns)} variables.")
     
     # Run analysis based on method
     if args.method == 'ols':
@@ -32,8 +41,8 @@ def run_analysis(args):
             print("Error: --outcome and --covariates required for OLS")
             sys.exit(1)
         
-        # Determine HC type (default to HC1 if robust, use auto for intelligent selection)
-        hc_type = 'auto' if args.robust else 'HC1'  # Use auto for automatic selection
+        # Determine HC type (use HC1 if robust, None if --no-robust specified)
+        hc_type = 'HC1' if args.robust else None
         
         model = OLSRegression(
             data=data,
@@ -47,10 +56,11 @@ def run_analysis(args):
         # Save results if output specified
         if args.output:
             with open(args.output, 'w') as f:
-                json.dump({k: float(v) if isinstance(v, (int, float, np.integer, np.floating)) 
-                          else v.tolist() if hasattr(v, 'tolist') else str(v) 
+                json.dump({k: float(v) if isinstance(v, (int, float, np.integer, np.floating))
+                          else v.tolist() if hasattr(v, 'tolist') else str(v)
                           for k, v in results.items()}, f, indent=2)
-            print(f"\nResults saved to {args.output}")
+            if VERBOSE:
+                print(f"\nResults saved to {args.output}")
     
     elif args.method == 'did':
         if not all([args.outcome, args.treatment, args.time, args.unit]):
@@ -69,19 +79,21 @@ def run_analysis(args):
         print("\n" + model.summary())
         
         # Test parallel trends
-        try:
-            trends = model.test_parallel_trends()
-            print("\nParallel Trends Test:")
-            print(f"  P-value: {trends['pvalue']:.4f}")
-            print(f"  {trends['interpretation']}")
-        except Exception as e:
-            print(f"\nCould not run parallel trends test: {e}")
-        
+        if VERBOSE:
+            try:
+                trends = model.test_parallel_trends()
+                print("\nParallel Trends Test:")
+                print(f"  P-value: {trends['pvalue']:.4f}")
+                print(f"  {trends['interpretation']}")
+            except Exception as e:
+                print(f"\nCould not run parallel trends test: {e}")
+
         if args.output:
             with open(args.output, 'w') as f:
-                json.dump({k: float(v) if isinstance(v, (int, float)) else str(v) 
+                json.dump({k: float(v) if isinstance(v, (int, float)) else str(v)
                           for k, v in results.items()}, f, indent=2)
-            print(f"\nResults saved to {args.output}")
+            if VERBOSE:
+                print(f"\nResults saved to {args.output}")
     
     elif args.method == 'fe':
         if not all([args.outcome, args.entity, args.time]):
@@ -131,20 +143,22 @@ def run_analysis(args):
         print("\n" + model.summary())
         
         # Run manipulation test
-        try:
-            manipulation = model.test_manipulation()
-            print("\nManipulation Test (McCrary):")
-            print(f"  Test statistic: {manipulation.get('test_statistic', 'N/A')}")
-            print(f"  P-value: {manipulation.get('pvalue', 'N/A')}")
-            print(f"  {manipulation.get('interpretation', 'N/A')}")
-        except Exception as e:
-            print(f"\nCould not run manipulation test: {e}")
-        
+        if VERBOSE:
+            try:
+                manipulation = model.test_manipulation()
+                print("\nManipulation Test (McCrary):")
+                print(f"  Test statistic: {manipulation.get('test_statistic', 'N/A')}")
+                print(f"  P-value: {manipulation.get('pvalue', 'N/A')}")
+                print(f"  {manipulation.get('interpretation', 'N/A')}")
+            except Exception as e:
+                print(f"\nCould not run manipulation test: {e}")
+
         if args.output:
             with open(args.output, 'w') as f:
                 json.dump({k: float(v) if isinstance(v, (int, float)) else str(v)
                           for k, v in results.items()}, f, indent=2)
-            print(f"\nResults saved to {args.output}")
+            if VERBOSE:
+                print(f"\nResults saved to {args.output}")
     
     elif args.method == 'matching':
         if not all([args.outcome, args.treatment, args.covariates]):
@@ -251,20 +265,25 @@ def run_analysis(args):
 
 def validate_data(args):
     """Validate data structure."""
-    print(f"Loading data from {args.data}...")
+    global VERBOSE
+    VERBOSE = not getattr(args, 'quiet', False)
+
+    if VERBOSE:
+        print(f"Loading data from {args.data}...")
     data = load_data(args.data)
-    
+
     required_cols = args.columns if args.columns else []
     validation = validate_data_structure(
         data=data,
         required_columns=required_cols,
         min_observations=args.min_obs
     )
-    
+
     if validation['valid']:
         print("✓ Data validation passed!")
-        print(f"  Observations: {len(data)}")
-        print(f"  Variables: {len(data.columns)}")
+        if VERBOSE:
+            print(f"  Observations: {len(data)}")
+            print(f"  Variables: {len(data.columns)}")
     else:
         print("✗ Data validation failed!")
         print("  Issues found:")
@@ -284,7 +303,12 @@ def main():
     parser = argparse.ArgumentParser(
         description="Econometrics Agent - Applied Microeconometrics Tools"
     )
-    
+
+    # Add global flags
+    parser.add_argument('--version', action='version',
+                       version=f'Econometrics Agent v{__version__}',
+                       help='Show version information and exit')
+
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
     
     # Run analysis command
@@ -301,10 +325,12 @@ def main():
     run_parser.add_argument('--unit', help='Unit identifier (for DiD)')
     run_parser.add_argument('--entity', help='Entity identifier (for panel)')
     run_parser.add_argument('--treatment-period', type=int, help='Treatment period (for DiD)')
-    run_parser.add_argument('--robust', action='store_true', default=True,
-                           help='Use robust standard errors')
+    run_parser.add_argument('--robust', action=argparse.BooleanOptionalAction, default=True,
+                           help='Use robust standard errors (use --no-robust to disable)')
     run_parser.add_argument('--time-effects', action='store_true', default=True,
                            help='Include time fixed effects (for FE/panel_iv)')
+    run_parser.add_argument('--quiet', action='store_true', default=False,
+                           help='Suppress verbose output')
     run_parser.add_argument('--running', help='Running variable (for RD)')
     run_parser.add_argument('--cutoff', type=float, help='Cutoff value (for RD)')
     run_parser.add_argument('--bandwidth', type=float, help='Bandwidth (for RD, optional)')
@@ -328,6 +354,8 @@ def main():
     validate_parser.add_argument('--columns', nargs='+', help='Required column names')
     validate_parser.add_argument('--min-obs', type=int, default=10,
                                 help='Minimum number of observations')
+    validate_parser.add_argument('--quiet', action='store_true', default=False,
+                                help='Suppress verbose output')
     validate_parser.set_defaults(func=validate_data)
     
     # Generate report command
