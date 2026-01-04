@@ -1,8 +1,26 @@
-"""Corpus tools for analyzing and retrieving Wooldridge textbook content."""
+"""Corpus tools for analyzing and retrieving Wooldridge textbook content.
+
+Includes page-indexed textbook search, topic mappings, and query interface.
+Reference: Wooldridge, J.M. (2010). Econometric Analysis of Cross Section and Panel Data, 2nd ed.
+"""
 
 from src.corpus.wooldridge_analyzer import WooldridgeAnalyzer
 from src.corpus.wooldridge_index import WooldridgeIndexer
 from src.corpus.wooldridge_search import WooldridgeSearch, search_wooldridge, get_chapter, get_methodology_guidance
+from src.corpus.wooldridge_page_index import (
+    METHODOLOGY_PAGES,
+    DIAGNOSTIC_THRESHOLDS,
+    get_wooldridge_citation as get_page_citation,
+    get_page_range,
+    get_diagnostic_threshold,
+    list_topics,
+)
+from src.corpus.ask_wooldridge import (
+    ask_wooldridge,
+    get_methodology_recommendation,
+    list_available_topics,
+    WOOLDRIDGE_GUIDANCE,
+)
 from src.corpus.agent_integration import (
     get_wooldridge_perspective,
     triangulate_methodology,
@@ -43,6 +61,18 @@ __all__ = [
     "WooldridgeSearch",
     "search_wooldridge",
     "get_chapter",
+    # Page index
+    "METHODOLOGY_PAGES",
+    "DIAGNOSTIC_THRESHOLDS",
+    "get_page_citation",
+    "get_page_range",
+    "get_diagnostic_threshold",
+    "list_topics",
+    # Ask Wooldridge
+    "ask_wooldridge",
+    "get_methodology_recommendation",
+    "list_available_topics",
+    "WOOLDRIDGE_GUIDANCE",
     # Agent integration
     "get_wooldridge_perspective",
     "triangulate_methodology",

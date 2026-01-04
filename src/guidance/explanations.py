@@ -1,4 +1,9 @@
-"""Explanation system with basic and educational modes."""
+"""Explanation system with basic and educational modes.
+
+Includes authoritative citations from:
+Wooldridge, J.M. (2010). Econometric Analysis of Cross Section and Panel Data, 2nd ed.
+MIT Press.
+"""
 
 from typing import Dict, Any, Optional, Literal
 import warnings
@@ -6,6 +11,36 @@ import warnings
 
 # Global explanation mode
 _GLOBAL_EXPLANATION_MODE: Literal['basic', 'educational'] = 'basic'
+
+
+# Wooldridge page citations for explanations
+WOOLDRIDGE_CITATIONS: Dict[str, str] = {
+    # Method Selection
+    'method_selection_did': 'Wooldridge, Ch. 21, Section 21.4, p.713-720',
+    'method_selection_iv': 'Wooldridge, Ch. 5, p.83-113',
+    'method_selection_rd': 'Wooldridge, Ch. 21, Section 21.5, p.720-725',
+    'method_selection_matching': 'Wooldridge, Ch. 21, Section 21.3, p.704-710',
+    'method_selection_fe': 'Wooldridge, Ch. 10, Section 10.5, p.263-297',
+
+    # Standard Errors
+    'standard_error_robust': 'Wooldridge, Ch. 4, Section 4.2.3, p.55-58',
+    'standard_error_clustered': 'Wooldridge, Ch. 10, Section 10.5.4, p.274-276',
+
+    # Diagnostics
+    'diagnostic_first_stage_f': 'Wooldridge, Ch. 5, p.101-103 (Staiger-Stock rule)',
+    'diagnostic_overidentification': 'Wooldridge, Ch. 6, Section 6.2.2, p.122-124',
+    'diagnostic_hausman': 'Wooldridge, Ch. 10, Section 10.7.3, p.291-300',
+    'diagnostic_parallel_trends': 'Wooldridge, Ch. 21, Section 21.4, p.713-720',
+
+    # Statistical Assumptions
+    'statistical_assumptions_ols': 'Wooldridge, Ch. 4, p.49-80',
+
+    # Economic Intuition
+    'economic_intuition_coefficient': 'Wooldridge, Ch. 4, Section 4.1, p.49-55',
+
+    # Causal Identification
+    'causal_identification_did': 'Wooldridge, Ch. 21, Section 21.4, p.713-720',
+}
 
 
 def toggle_explanation_mode(
@@ -33,30 +68,32 @@ def toggle_explanation_mode(
 def get_explanation(
     topic: str,
     context: Optional[Dict[str, Any]] = None,
-    mode: Optional[Literal['basic', 'educational']] = None
+    mode: Optional[Literal['basic', 'educational']] = None,
+    include_citation: bool = False
 ) -> str:
     """Get explanation for a topic in basic or educational mode.
-    
+
     Args:
         topic: Topic identifier (e.g., 'method_selection_did', 'economic_intuition_coefficient')
         context: Optional context dictionary for context-aware explanations
         mode: 'basic' or 'educational'. If None, uses global mode.
-        
+        include_citation: If True, append Wooldridge citation when available.
+
     Returns:
-        Explanation text
+        Explanation text (with optional citation)
     """
     if mode is None:
         mode = _GLOBAL_EXPLANATION_MODE
-    
+
     if context is None:
         context = {}
-    
+
     # Get explanation from database
     explanation = _EXPLANATION_DB.get(topic, {})
-    
+
     if not explanation:
         return f"Explanation not available for topic: {topic}"
-    
+
     # Get explanation text for requested mode
     if mode == 'educational' and 'educational' in explanation:
         text = explanation['educational']
@@ -65,7 +102,7 @@ def get_explanation(
     else:
         # Fallback to whatever is available
         text = list(explanation.values())[0]
-    
+
     # Apply context substitutions if needed
     if context:
         try:
@@ -73,8 +110,24 @@ def get_explanation(
         except KeyError:
             # Missing context variables - return as-is
             pass
-    
+
+    # Append Wooldridge citation if requested
+    if include_citation and topic in WOOLDRIDGE_CITATIONS:
+        text = f"{text}\n\n[Reference: {WOOLDRIDGE_CITATIONS[topic]}]"
+
     return text
+
+
+def get_wooldridge_citation(topic: str) -> Optional[str]:
+    """Get Wooldridge citation for a topic.
+
+    Args:
+        topic: Topic identifier
+
+    Returns:
+        Citation string or None if not available
+    """
+    return WOOLDRIDGE_CITATIONS.get(topic)
 
 
 # Explanation database
@@ -269,5 +322,5 @@ _EXPLANATION_DB: Dict[str, Dict[str, str]] = {
 }
 
 
-__all__ = ['get_explanation', 'toggle_explanation_mode']
+__all__ = ['get_explanation', 'toggle_explanation_mode', 'get_wooldridge_citation', 'WOOLDRIDGE_CITATIONS']
 

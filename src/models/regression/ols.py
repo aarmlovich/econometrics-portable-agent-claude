@@ -67,6 +67,9 @@ class OLSRegression(BaseEconometricModel):
         - 100 <= n/k < 250: HC2 (leverage-adjusted)
         - n/k < 100: HC3 (jackknife, preferred for small samples)
 
+        Reference: Wooldridge, Ch. 4, Section 4.2.3, p.57-58 discusses
+        heteroskedasticity-robust inference and HC variants.
+
         Args:
             n: Number of observations
             k: Number of regressors (including constant if present)
@@ -76,6 +79,8 @@ class OLSRegression(BaseEconometricModel):
         """
         obs_per_regressor = n / k
 
+        # Threshold: n/k < 100 suggests HC3 for better small-sample properties
+        # Reference: Wooldridge, Ch. 4, p.57-58
         if obs_per_regressor >= 250:
             return 'HC1'
         elif obs_per_regressor >= 100:

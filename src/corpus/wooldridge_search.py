@@ -2,36 +2,96 @@
 
 This module provides simple keyword-based search of Wooldridge markdown files,
 replacing the complex embedding/RAG pipeline with straightforward text search.
+
+Supports two markdown formats:
+1. Old format (docs/wooldridge_extracts/): Part-based files with ## headers
+2. New format (docs/wooldridge_textbook/): Page-range files with {page}--- markers
 """
 
 import re
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from collections import defaultdict
 
 
-class WooldridgeSearch:
-    """Simple search interface for Wooldridge textbook content."""
+def _get_repo_root() -> Path:
+    """Get repository root using relative path from this module."""
+    # This file: src/corpus/wooldridge_search.py
+    # Repo root: ../../
+    return Path(__file__).parent.parent.parent
 
-    def __init__(self, extracts_dir: Optional[Path] = None):
-        """Initialize search with path to markdown extracts.
+
+def _get_default_textbook_path() -> Path:
+    """Get default path to Wooldridge textbook markdowns (portable)."""
+    return _get_repo_root() / "docs" / "wooldridge_textbook"
+
+
+def _get_legacy_extracts_path() -> Path:
+    """Get path to legacy extracts (for backward compatibility)."""
+    return _get_repo_root() / "docs" / "wooldridge_extracts"
+
+
+class WooldridgeSearch:
+    """Simple search interface for Wooldridge textbook content.
+
+    Supports both the new page-range markdown format and legacy part-based format.
+    """
+
+    # Regex to match new page marker format: {241}------------------------------------------------
+    PAGE_MARKER_PATTERN = re.compile(r'^\{(\d+)\}-+$')
+
+    def __init__(self, extracts_dir: Optional[Path] = None, use_new_textbook: bool = True):
+        """Initialize search with path to markdown files.
 
         Args:
             extracts_dir: Path to directory containing markdown files.
-                         Defaults to docs/wooldridge_extracts/
+                         If None, uses default path based on use_new_textbook.
+            use_new_textbook: If True (default), use docs/wooldridge_textbook/
+                             If False, use docs/wooldridge_extracts/ (legacy)
         """
         if extracts_dir is None:
-            # Default to docs/wooldridge_extracts relative to project root
-            self.extracts_dir = Path(__file__).parent.parent.parent / "docs" / "wooldridge_extracts"
+            if use_new_textbook:
+                self.extracts_dir = _get_default_textbook_path()
+            else:
+                self.extracts_dir = _get_legacy_extracts_path()
         else:
             self.extracts_dir = Path(extracts_dir)
 
+        # Try new textbook path, fall back to legacy if not found
         if not self.extracts_dir.exists():
-            raise FileNotFoundError(f"Extracts directory not found: {self.extracts_dir}")
+            legacy_path = _get_legacy_extracts_path()
+            if legacy_path.exists():
+                self.extracts_dir = legacy_path
+            else:
+                raise FileNotFoundError(
+                    f"Wooldridge content not found. Checked:\n"
+                    f"  - {self.extracts_dir}\n"
+                    f"  - {legacy_path}"
+                )
+
+        self.use_new_format = self._detect_format()
 
         # Cache for loaded content
         self._content_cache = {}
         self._section_index = None
+
+    def _detect_format(self) -> bool:
+        """Detect if using new page-range format or legacy format."""
+        # Check for page-range files (pages_1-10.md, etc.)
+        page_files = list(self.extracts_dir.glob('pages_*.md'))
+        return len(page_files) > 0
+
+    def _extract_page_number(self, line: str) -> Optional[int]:
+        """Extract page number from new format marker.
+
+        Args:
+            line: Line to check for page marker
+
+        Returns:
+            Page number if found, None otherwise
+        """
+        match = self.PAGE_MARKER_PATTERN.match(line.strip())
+        return int(match.group(1)) if match else None
 
     def _load_markdown_file(self, file_path: Path) -> str:
         """Load markdown file content."""
@@ -43,12 +103,14 @@ class WooldridgeSearch:
     def _extract_sections(self, content: str, file_name: str) -> List[Dict]:
         """Extract sections from markdown content.
 
+        Handles both old format (## headers) and new format ({page}--- markers).
+
         Args:
             content: Markdown content
             file_name: Name of the file
 
         Returns:
-            List of section dictionaries with title, content, and metadata
+            List of section dictionaries with title, content, page info, and metadata
         """
         sections = []
 
@@ -58,35 +120,55 @@ class WooldridgeSearch:
 
         current_section = None
         current_content = []
+        current_page = None  # Track page numbers for new format
 
         for line in lines:
+            # Check for page marker in new format
+            page_num = self._extract_page_number(line)
+            if page_num is not None:
+                current_page = page_num
+                continue  # Don't include page marker in content
+
             header_match = re.match(header_pattern, line)
             if header_match:
                 # Save previous section
                 if current_section:
-                    sections.append({
+                    section_data = {
                         'title': current_section['title'],
                         'level': current_section['level'],
                         'content': '\n'.join(current_content).strip(),
                         'file_name': file_name,
-                    })
+                    }
+                    # Add page info if available
+                    if current_section.get('page_start'):
+                        section_data['page_start'] = current_section['page_start']
+                        section_data['page_end'] = current_page or current_section['page_start']
+                    sections.append(section_data)
 
                 # Start new section
                 level = len(header_match.group(1))
                 title = header_match.group(2).strip()
-                current_section = {'title': title, 'level': level}
+                current_section = {
+                    'title': title,
+                    'level': level,
+                    'page_start': current_page
+                }
                 current_content = []
             else:
                 current_content.append(line)
 
         # Add final section
         if current_section:
-            sections.append({
+            section_data = {
                 'title': current_section['title'],
                 'level': current_section['level'],
                 'content': '\n'.join(current_content).strip(),
                 'file_name': file_name,
-            })
+            }
+            if current_section.get('page_start'):
+                section_data['page_start'] = current_section['page_start']
+                section_data['page_end'] = current_page or current_section['page_start']
+            sections.append(section_data)
 
         return sections
 
@@ -101,25 +183,48 @@ class WooldridgeSearch:
 
         index = defaultdict(list)
 
-        # Index priority files first
-        priority_files = [
-            'full_textbook.md',
-            'part6_panel_data.md',
-            'part2_iv_gmm.md',
-            'part4_nonlinear.md',
-            'part5_nonlinear_models.md',
-        ]
-
         all_files = []
-        for priority_file in priority_files:
-            file_path = self.extracts_dir / priority_file
-            if file_path.exists():
-                all_files.append(file_path)
 
-        # Add other markdown files
-        for file_path in self.extracts_dir.glob('*.md'):
-            if file_path.name not in priority_files and file_path.name != 'extraction_log.md':
-                all_files.append(file_path)
+        if self.use_new_format:
+            # New format: page-range files (pages_1-10.md, pages_11-20.md, etc.)
+            # Sort by starting page number for proper ordering
+            page_files = list(self.extracts_dir.glob('pages_*.md'))
+
+            def extract_start_page(path: Path) -> int:
+                """Extract starting page number from filename."""
+                name = path.stem  # e.g., "pages_1-10"
+                try:
+                    start = name.replace('pages_', '').split('-')[0]
+                    return int(start)
+                except (ValueError, IndexError):
+                    return 0
+
+            page_files.sort(key=extract_start_page)
+            all_files = page_files
+
+            # Also check for merged file as fallback
+            merged_file = self.extracts_dir / 'Wooldridge Panel & Timeseries Markdowns-merged.md'
+            if merged_file.exists() and not page_files:
+                all_files = [merged_file]
+        else:
+            # Legacy format: part-based files
+            priority_files = [
+                'full_textbook.md',
+                'part6_panel_data.md',
+                'part2_iv_gmm.md',
+                'part4_nonlinear.md',
+                'part5_nonlinear_models.md',
+            ]
+
+            for priority_file in priority_files:
+                file_path = self.extracts_dir / priority_file
+                if file_path.exists():
+                    all_files.append(file_path)
+
+            # Add other markdown files
+            for file_path in self.extracts_dir.glob('*.md'):
+                if file_path.name not in priority_files and file_path.name != 'extraction_log.md':
+                    all_files.append(file_path)
 
         # Build index
         for file_path in all_files:
@@ -200,7 +305,7 @@ class WooldridgeSearch:
         results = []
         for section_key, score in sorted_sections:
             section = section_data[section_key]
-            results.append({
+            result = {
                 'title': section['title'],
                 'content': section['content'][:500],  # Truncate for preview
                 'file_name': section['file_name'],
@@ -209,7 +314,15 @@ class WooldridgeSearch:
                     'file_name': section['file_name'],
                     'section_title': section['title'],
                 }
-            })
+            }
+            # Add page citations if available (new format)
+            if 'page_start' in section:
+                result['page_start'] = section['page_start']
+                result['page_end'] = section.get('page_end', section['page_start'])
+                result['citation'] = f"Wooldridge, p.{section['page_start']}"
+                if section.get('page_end') and section['page_end'] != section['page_start']:
+                    result['citation'] = f"Wooldridge, p.{section['page_start']}-{section['page_end']}"
+            results.append(result)
 
         return results
 
@@ -222,62 +335,86 @@ class WooldridgeSearch:
         Returns:
             Chapter content as markdown string
         """
-        # Map topics to file names
-        topic_files = {
-            'panel': 'part6_panel_data.md',
-            'fixed effects': 'part6_panel_data.md',
-            'random effects': 'part6_panel_data.md',
-            'instrumental variables': 'part2_iv_gmm.md',
-            'iv': 'part2_iv_gmm.md',
-            'gmm': 'part2_iv_gmm.md',
-            'nonlinear': 'part4_nonlinear.md',
-            'limited dependent': 'part5_nonlinear_models.md',
-            'probit': 'part5_nonlinear_models.md',
-            'logit': 'part5_nonlinear_models.md',
-            'tobit': 'part5_nonlinear_models.md',
-        }
-
         topic_lower = topic.lower()
 
-        # Find matching file
-        file_name = None
-        for key, fname in topic_files.items():
-            if key in topic_lower:
-                file_name = fname
-                break
+        if self.use_new_format:
+            # New format: use search to find relevant sections with page numbers
+            # Topic to approximate page ranges (Wooldridge 2nd ed)
+            topic_pages = {
+                'panel': (247, 340),        # Ch 10-11
+                'fixed effects': (263, 297),
+                'random effects': (257, 265),
+                'hausman': (291, 300),
+                'instrumental variables': (83, 140),  # Ch 5-6
+                'iv': (83, 113),
+                '2sls': (90, 100),
+                'gmm': (195, 240),          # Ch 8
+                'weak instruments': (101, 103),
+                'probit': (453, 490),       # Ch 15
+                'logit': (453, 490),
+                'tobit': (525, 540),        # Ch 16
+                'nonlinear': (453, 550),
+            }
 
-        if file_name is None:
-            # Default to searching full textbook
-            file_name = 'full_textbook.md'
+            # Search for the topic
+            results = self.search_wooldridge(topic, top_k=5)
+            if results:
+                output_parts = []
+                for r in results:
+                    citation = r.get('citation', r['file_name'])
+                    output_parts.append(f"## {r['title']} ({citation})\n{r['content']}")
+                return '\n\n'.join(output_parts)
 
-        file_path = self.extracts_dir / file_name
-        if not file_path.exists():
-            return f"Chapter file not found: {file_name}"
+            return f"No chapter content found for: {topic}"
+        else:
+            # Legacy format: map topics to file names
+            topic_files = {
+                'panel': 'part6_panel_data.md',
+                'fixed effects': 'part6_panel_data.md',
+                'random effects': 'part6_panel_data.md',
+                'instrumental variables': 'part2_iv_gmm.md',
+                'iv': 'part2_iv_gmm.md',
+                'gmm': 'part2_iv_gmm.md',
+                'nonlinear': 'part4_nonlinear.md',
+                'limited dependent': 'part5_nonlinear_models.md',
+                'probit': 'part5_nonlinear_models.md',
+                'logit': 'part5_nonlinear_models.md',
+                'tobit': 'part5_nonlinear_models.md',
+            }
 
-        # Load and return content
-        content = self._load_markdown_file(file_path)
+            # Find matching file
+            file_name = None
+            for key, fname in topic_files.items():
+                if key in topic_lower:
+                    file_name = fname
+                    break
 
-        # Extract relevant sections
-        sections = self._extract_sections(content, file_name)
+            if file_name is None:
+                file_name = 'full_textbook.md'
 
-        # Find sections matching the topic
-        relevant_sections = []
-        for section in sections:
-            if topic_lower in section['title'].lower():
-                relevant_sections.append(section)
+            file_path = self.extracts_dir / file_name
+            if not file_path.exists():
+                return f"Chapter file not found: {file_name}"
 
-        if not relevant_sections:
-            # Return first few sections as preview
+            content = self._load_markdown_file(file_path)
+            sections = self._extract_sections(content, file_name)
+
+            # Find sections matching the topic
+            relevant_sections = []
+            for section in sections:
+                if topic_lower in section['title'].lower():
+                    relevant_sections.append(section)
+
+            if not relevant_sections:
+                return '\n\n'.join([
+                    f"## {s['title']}\n{s['content'][:300]}..."
+                    for s in sections[:3]
+                ])
+
             return '\n\n'.join([
-                f"## {s['title']}\n{s['content'][:300]}..."
-                for s in sections[:3]
+                f"## {s['title']}\n{s['content']}"
+                for s in relevant_sections[:5]
             ])
-
-        # Return matched sections
-        return '\n\n'.join([
-            f"## {s['title']}\n{s['content']}"
-            for s in relevant_sections[:5]
-        ])
 
     def get_methodology_guidance(self, method: str) -> str:
         """Get method-specific guidance from Wooldridge.
@@ -299,7 +436,11 @@ class WooldridgeSearch:
 
         for i, result in enumerate(results, 1):
             guidance_parts.append(f"\n{i}. {result['title']}")
-            guidance_parts.append(f"   Source: {result['file_name']}")
+            # Include page citation if available
+            if 'citation' in result:
+                guidance_parts.append(f"   Reference: {result['citation']}")
+            else:
+                guidance_parts.append(f"   Source: {result['file_name']}")
             guidance_parts.append(f"   {result['content'][:300]}...")
 
         return '\n'.join(guidance_parts)

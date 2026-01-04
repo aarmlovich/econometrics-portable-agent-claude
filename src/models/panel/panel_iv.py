@@ -270,10 +270,13 @@ class PanelIV(BaseEconometricModel):
         rsquared_within = float(getattr(self.results, 'rsquared_within', rsquared))
 
         # Warn if weak instruments
+        # Threshold: F < 10 indicates weak instruments (Staiger-Stock rule)
+        # Reference: Wooldridge, Ch. 5, p.101-103
         if first_stage_f < 10:
             warnings.warn(
                 f"Weak instruments detected: F-statistic = {first_stage_f:.2f} < 10. "
-                "Consider using LIML or alternative instruments.",
+                "Consider using LIML or alternative instruments. "
+                "(Wooldridge, p.101-103)",
                 UserWarning
             )
 
@@ -302,7 +305,10 @@ class PanelIV(BaseEconometricModel):
     
     def test_weak_instruments(self) -> Dict[str, float]:
         """Test for weak instruments using first-stage F-statistic.
-        
+
+        Uses the Staiger-Stock (1997) rule of thumb: F > 10 indicates strong instruments.
+        Reference: Wooldridge, Ch. 5, p.101-103
+
         Returns:
             Dictionary containing weak instrument test results
         """
@@ -310,21 +316,23 @@ class PanelIV(BaseEconometricModel):
             first_stage = self.estimate_first_stage()
         else:
             first_stage = self.estimate_first_stage()
-        
+
         f_stat = first_stage['f_statistic']
         f_pval = first_stage['f_pvalue']
+        # Threshold: F < 10 (Staiger-Stock rule, Wooldridge p.101-103)
         is_weak = f_stat < 10
-        
+
         interpretation = (
-            "Strong instruments (F > 10)" if not is_weak
-            else "Weak instruments (F < 10) - consider LIML or alternative instruments"
+            "Strong instruments (F > 10, Wooldridge p.101)" if not is_weak
+            else "Weak instruments (F < 10) - consider LIML (Wooldridge p.101-103)"
         )
-        
+
         return {
             'f_statistic': float(f_stat),
             'f_pvalue': float(f_pval),
             'is_weak': bool(is_weak),
-            'interpretation': interpretation
+            'interpretation': interpretation,
+            'citation': 'Wooldridge, Ch. 5, p.101-103'
         }
     
     def test_overidentification(self) -> Optional[Dict[str, float]]:

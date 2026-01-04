@@ -109,15 +109,17 @@ class RandomEffects(BaseEconometricModel):
     
     def test_hausman(self, fe_results: Any) -> Dict[str, float]:
         """Test Hausman specification test (FE vs RE).
-        
+
         Tests H0: Random effects is appropriate (unobserved heterogeneity
         is uncorrelated with regressors). If p < 0.05, reject H0 and use
         fixed effects instead.
-        
+
+        Reference: Wooldridge, Ch. 10, Section 10.7.3, p.291-300
+
         Args:
             fe_results: Results from FixedEffects.estimate() method.
                        Should be a dictionary with 'coefficients' key.
-        
+
         Returns:
             Dictionary containing:
                 - hausman_statistic: Hausman test statistic
@@ -125,6 +127,7 @@ class RandomEffects(BaseEconometricModel):
                 - degrees_of_freedom: Degrees of freedom
                 - null_hypothesis: "Random effects is appropriate"
                 - interpretation: Text interpretation
+                - citation: Wooldridge reference
         """
         if self.results is None:
             self.estimate()
@@ -199,20 +202,23 @@ class RandomEffects(BaseEconometricModel):
             hausman_stat = float(abs(diff.T @ var_diff_inv @ diff))
         df = len(common_vars)
         pvalue = 1 - stats.chi2.cdf(hausman_stat, df)
-        
+
+        # Threshold: p < 0.05 rejects H0 (RE consistent)
+        # Reference: Wooldridge, Ch. 10, Section 10.7.3, p.291-300
         interpretation = (
-            "Random effects is appropriate (p >= 0.05)" if pvalue >= 0.05
-            else "Fixed effects is preferred (p < 0.05, reject RE)"
+            "Random effects is appropriate (p >= 0.05, Wooldridge p.291)" if pvalue >= 0.05
+            else "Fixed effects is preferred (p < 0.05, reject RE, Wooldridge p.291)"
         )
-        
+
         self.hausman_results = {
             'hausman_statistic': hausman_stat,
             'pvalue': pvalue,
             'degrees_of_freedom': df,
             'null_hypothesis': 'Random effects is appropriate',
-            'interpretation': interpretation
+            'interpretation': interpretation,
+            'citation': 'Wooldridge, Ch. 10, Section 10.7.3, p.291-300'
         }
-        
+
         return self.hausman_results
     
     def summary(self) -> str:
