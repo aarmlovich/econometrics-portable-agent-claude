@@ -29,10 +29,10 @@ The Econometrics Agent provides a hybrid architecture supporting three usage mod
 - Basic time series methods (for robustness checks)
 
 ### Textbook Corpus (Triangulation)
-- **Wooldridge**: 200+ section-based markdown files in `docs/wooldridge_panel/` organized by chapter
-- **Angrist/MHE**: 50+ section-based markdown files in `docs/angrist_mhe/` for causal inference
+- **Wooldridge**: 73 page-range files in `docs/wooldridge/` (~29KB each, 10 pages per file)
+- **Angrist/MHE**: 15 page-range files in `docs/angrist/` (~20 pages per file)
 - **Hansen Practices**: Code practices in `docs/hansen_practices/` from public Stata/R code
-- **Page-Level Citations**: All content includes page markers for accurate citations
+- **Page-Level Citations**: All content includes page markers `{123}---` for accurate citations
 - **Triangulation**: Compare perspectives across all three sources for methodology guidance
 
 ## Installation
@@ -233,33 +233,30 @@ Ask questions like:
 
 ## Textbook Corpus
 
-The agent integrates three econometric textbook sources for comprehensive methodology guidance:
+The agent integrates three econometric textbook sources for comprehensive methodology guidance.
 
-### Textbook Locations
+### File Structure
 
-| Source | Path | Focus |
-|--------|------|-------|
-| Wooldridge | `docs/wooldridge_panel/` | Panel data, standard errors, IV |
-| Angrist/MHE | `docs/angrist_mhe/` | Causal inference, DiD, RD, IV |
-| Hansen | `docs/hansen_practices/` | Modern code practices |
+| Source | Path | Format | Files |
+|--------|------|--------|-------|
+| Wooldridge | `docs/wooldridge/` | 10-page ranges (~29KB each) | 73 files |
+| Angrist/MHE | `docs/angrist/` | 20-page ranges | 15 files |
+| Hansen | `docs/hansen_practices/` | Full document | 2 files |
 
 ### Key Features
 
-- **Section-Based Organization**: Files organized by chapter and section (e.g., `ch10_3_fixed_effects.md`)
+- **Page-Range Organization**: Files named `pages_1-10.md`, `pages_11-20.md`, etc.
+- **Consistent File Sizes**: ~29KB per file (~7,500 tokens, ~3.8% of context)
 - **Page Markers**: Content includes page markers `{123}---` for precise citations
-- **Master Index**: Each textbook has `_index.md` with TOC and page-to-file mappings
-- **Triangulation**: Compare Hansen, Angrist, and Wooldridge perspectives
+- **Context Loading**: Agent loads 3-7 relevant files at analysis start
 
-### Using the Textbooks
+### Usage
 
-**Find content by topic:**
-```bash
-# Search for fixed effects content
-grep -r "fixed effects" docs/wooldridge_panel/
-
-# Read the index to find relevant files
-cat docs/wooldridge_panel/_index.md
-```
+Agent reads page-range files directly based on topic. Example for fixed effects:
+- `docs/wooldridge/pages_271-280.md` (Ch 10.4: Random effects)
+- `docs/wooldridge/pages_281-290.md` (Ch 10.5: Fixed effects)
+- `docs/wooldridge/pages_291-300.md` (Ch 10.5-10.6: FE policy)
+- `docs/wooldridge/pages_301-310.md` (Ch 10.7: Hausman test)
 
 **Get page citations:**
 ```python
@@ -303,8 +300,8 @@ econometrics-agent/
 │   ├── processed/
 │   └── outputs/
 ├── docs/
-│   ├── wooldridge_panel/   # Wooldridge textbook by section
-│   ├── angrist_mhe/        # Angrist/MHE by section
+│   ├── wooldridge/         # Wooldridge textbook (73 page-range files)
+│   ├── angrist/            # Angrist/MHE (15 page-range files)
 │   ├── hansen_practices/   # Hansen code practices
 │   └── notebooks/          # Example notebooks
 ├── requirements.txt        # Core dependencies
@@ -567,8 +564,8 @@ mypy src/
 - See `.cursor/rules/` for detailed agent configuration and guidelines
 - Check `docs/notebooks/` for example analyses
 - **Textbook Corpus**:
-  - Wooldridge: `docs/wooldridge_panel/_index.md`
-  - Angrist/MHE: `docs/angrist_mhe/_index.md`
+  - Wooldridge: `docs/wooldridge/` (73 page-range files)
+  - Angrist/MHE: `docs/angrist/` (15 page-range files)
   - Hansen: `docs/hansen_practices/_index.md`
 - **Triangulation**: See `.cursor/rules/triangulation-guide.mdc` for perspective synthesis
 

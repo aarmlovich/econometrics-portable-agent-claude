@@ -14,13 +14,22 @@ This guide provides a systematic framework for comparing and synthesizing perspe
 
 ## Textbook Locations
 
-| Source | Path | Focus |
-|--------|------|-------|
-| Wooldridge | `docs/wooldridge_panel/` | Panel data, context-appropriate SE |
-| Angrist/MHE | `docs/angrist_mhe/` | Identification, causal inference |
-| Hansen | `docs/hansen_practices/` | Modern code practices |
+| Source | Path | Format | Focus |
+|--------|------|--------|-------|
+| Wooldridge | `docs/wooldridge/` | 73 files, 10-page ranges | Panel data, SE, IV |
+| Angrist/MHE | `docs/angrist/` | 15 files, 20-page ranges | Causal inference, DiD, RD |
+| Hansen | `docs/hansen_practices/` | 2 files | Modern code practices |
 
-Each textbook has an `_index.md` with the table of contents and page mappings.
+Page markers `{123}---` preserved for citations.
+
+## At Analysis Start
+
+**Load 3-7 relevant page-range files into context based on the topic.**
+
+Example loading patterns:
+- **Fixed Effects**: Load pages_271-280.md through pages_301-310.md (4-6 files)
+- **Instrumental Variables**: Load pages_91-100.md through pages_151-160.md (6-7 files)
+- **Treatment Effects**: Load pages_571-580.md through pages_621-630.md (5-6 files)
 
 ## Triangulation Framework
 
@@ -61,28 +70,28 @@ Each textbook has an `_index.md` with the table of contents and page mappings.
 
 ### Wooldridge Lookup
 
-1. Read the index: `docs/wooldridge_panel/_index.md`
-2. Find the relevant chapter file by topic
-3. Search for specific terms with grep
-4. Use page markers `{123}---` for citations
+1. Identify chapter from `wooldridge-references.mdc` table
+2. Read relevant page-range files from `docs/wooldridge/`
+3. Use page markers `{123}---` for citations
 
 ```bash
-# Find fixed effects content
-grep -r "fixed effects" docs/wooldridge_panel/
+# Read fixed effects content (Ch 10.5)
+cat docs/wooldridge/pages_281-290.md
 ```
 
 ### Angrist/MHE Lookup
 
-1. Read the index: `docs/angrist_mhe/_index.md`
-2. Key chapters:
-   - ch03: Regression & CEF
-   - ch04: Instrumental Variables
-   - ch05: Difference-in-Differences
-   - ch06: Regression Discontinuity
+1. Read files from `docs/angrist/`
+2. Key topics by page range:
+   - pages_1-20.md: Regression & CEF basics
+   - pages_21-40.md: IV motivation
+   - pages_41-60.md: 2SLS, LATE
+   - pages_61-80.md: DiD foundations
+   - pages_81-100.md: RD designs
 
 ```bash
-# Find IV content
-grep -r "instrumental" docs/angrist_mhe/
+# Read IV content
+cat docs/angrist/pages_41-60.md
 ```
 
 ### Hansen Lookup
@@ -114,8 +123,8 @@ grep -r "instrumental" docs/angrist_mhe/
 
 | Method | Angrist | Hansen | Wooldridge | Notes |
 |--------|---------|--------|------------|-------|
-| DiD | Ch 5, primary | Validates | Ch 21 | Angrist primary |
-| RD | Ch 6, primary | Validates | - | Angrist primary |
+| DiD | Primary source | Validates | Ch 10.6.4 | Angrist primary |
+| RD | Primary source | Validates | - | Angrist primary |
 | Matching | Ch 3.3 | - | Ch 18 | Both useful |
 | IV | Ch 4, primary | Explicit diagnostics | Panel IV | Angrist + Hansen |
 
@@ -125,7 +134,7 @@ grep -r "instrumental" docs/angrist_mhe/
 |------------|--------|---------|------------|-------------|
 | First-stage F | Required (F>10) | Mentioned | Chapter 5 | Always report |
 | First-stage R2 | Required | - | - | Always report |
-| Overid tests | Required | Chapter 4.2 | Chapter 5 | When overidentified |
+| Overid tests | Required | Chapter 4.2 | Chapter 6 | When overidentified |
 
 ## Response Templates
 
@@ -135,8 +144,8 @@ grep -r "instrumental" docs/angrist_mhe/
 All three perspectives agree on [approach]:
 
 - **Hansen** (practices): [Hansen's position]
-- **Angrist/MHE** (Ch X): [Angrist's position]
-- **Wooldridge** (Ch Y, pp. Z): [Wooldridge's position]
+- **Angrist/MHE** (pp. X-Y): [Angrist's position]
+- **Wooldridge** (Ch Z, pp. A-B): [Wooldridge's position]
 
 **Our approach**: We follow this consensus with high confidence.
 ```
@@ -181,48 +190,14 @@ Perspectives differ on [topic]:
 ### Treatment Effects
 - **DiD/RD/Matching**: Angrist primary, Wooldridge for panel context
 - **Propensity scores**: Angrist Ch 3.3
-- **Panel treatment effects**: Wooldridge Ch 18, 21
-
-## Examples
-
-### Example 1: Panel Data Clustering
-
-**User**: "Should I cluster standard errors in panel data?"
-
-**Response**:
-```
-Yes, cluster standard errors in panel data. All three perspectives agree:
-
-- **Wooldridge (Ch 10, pp. 274-330)**: Recommends clustered SE with small-sample correction
-- **Hansen (practices)**: Validates clustering, uses `vce(robust)` with fixed effects
-- **Angrist/MHE (Ch 8)**: Uses clustered SE, discusses Moulton correction
-
-**Our approach**: Clustered SE with small-sample correction (high confidence).
-```
-
-### Example 2: Standard Error Defaults
-
-**User**: "What standard errors should I use?"
-
-**Response**:
-```
-For cross-sectional data, use robust (HC1) as default:
-
-- **Hansen**: Uses robust (HC1) by default (modern practice)
-- **Wooldridge**: Context-dependent (homoskedastic for basics, robust/clustered for advanced)
-- **Angrist**: Historical examples vary, modern practice uses robust
-
-**Our synthesis**: Robust (HC1) default, with context-specific options:
-- HC3 for limited dependent variables (Wooldridge)
-- Clustered for panel data (all three)
-- HAC for time series (Wooldridge)
-```
+- **Panel treatment effects**: Wooldridge Ch 18
 
 ## Best Practices
 
-1. **Always show all three perspectives** when relevant
-2. **Indicate agreement level** (high/medium/low)
-3. **Provide synthesis** that combines insights
-4. **Cite sources** with chapter/page when available
-5. **Prefer modern practice** (Hansen) when perspectives differ
-6. **Context matters** - explain when each perspective is most relevant
+1. **Load relevant textbook files** at analysis start
+2. **Always show all three perspectives** when relevant
+3. **Indicate agreement level** (high/medium/low)
+4. **Provide synthesis** that combines insights
+5. **Cite sources** with chapter/page when available
+6. **Prefer modern practice** (Hansen) when perspectives differ
+7. **Context matters** - explain when each perspective is most relevant

@@ -24,8 +24,8 @@ Your New Project/
 │   └── utils/                   # Utility functions
 │
 ├── docs/
-│   ├── wooldridge_panel/        # Wooldridge textbook by section
-│   ├── angrist_mhe/             # Angrist/MHE by section
+│   ├── wooldridge/              # Wooldridge textbook (73 page-range files)
+│   ├── angrist/                 # Angrist/MHE (15 page-range files)
 │   └── hansen_practices/        # Hansen code practices
 │
 ├── requirements.txt             # Python dependencies
@@ -59,28 +59,29 @@ In Cursor chat, try:
 
 The agent has access to three textbook sources:
 
-| Source | Path | Focus |
-|--------|------|-------|
-| Wooldridge | `docs/wooldridge_panel/` | Panel data, standard errors, IV |
-| Angrist/MHE | `docs/angrist_mhe/` | Causal inference, DiD, RD, IV |
-| Hansen | `docs/hansen_practices/` | Modern code practices |
+| Source | Path | Format | Files |
+|--------|------|--------|-------|
+| Wooldridge | `docs/wooldridge/` | 10-page ranges (~29KB each) | 73 files |
+| Angrist/MHE | `docs/angrist/` | 20-page ranges | 15 files |
+| Hansen | `docs/hansen_practices/` | Full document | 2 files |
 
 ### File Organization
 
-Each textbook directory contains:
-- `_index.md` - Table of contents with page mappings
-- Section files named by chapter (e.g., `ch10_3_fixed_effects.md`)
+Page-range files provide consistent sizes for context loading:
+- Files named `pages_1-10.md`, `pages_11-20.md`, etc.
+- Each file is ~29KB (~7,500 tokens, ~3.8% of context)
 - Page markers `{123}---` preserved for citations
+- Agent loads 3-7 relevant files at analysis start
 
 ### Using Textbooks
 
-**Find content:**
-```bash
-# Search for topics
-grep -r "fixed effects" docs/wooldridge_panel/
+Agent reads page-range files directly. No complex indexing needed.
 
-# Read the index
-cat docs/wooldridge_panel/_index.md
+**Example for fixed effects:**
+```bash
+# Read relevant page ranges
+cat docs/wooldridge/pages_281-290.md  # Ch 10.5: Fixed effects
+cat docs/wooldridge/pages_291-300.md  # Ch 10.5-10.6: FE policy
 ```
 
 **Get page citations:**
@@ -152,8 +153,8 @@ Compare perspectives from:
 
 ### Required for Textbook Corpus
 
-- `docs/wooldridge_panel/` - Wooldridge textbook
-- `docs/angrist_mhe/` - Angrist/MHE textbook
+- `docs/wooldridge/` - Wooldridge textbook (73 page-range files)
+- `docs/angrist/` - Angrist/MHE textbook (15 page-range files)
 - `docs/hansen_practices/` - Hansen practices
 - `src/corpus/` - Page citation utilities
 
@@ -179,8 +180,8 @@ Compare perspectives from:
 
 ### Textbook Not Found
 
-1. Check `docs/wooldridge_panel/` directory exists
-2. Verify `_index.md` file present
+1. Check `docs/wooldridge/` directory exists
+2. Verify page-range files present (e.g., `pages_1-10.md`)
 3. Use grep to search for content
 
 ## Environment Notes

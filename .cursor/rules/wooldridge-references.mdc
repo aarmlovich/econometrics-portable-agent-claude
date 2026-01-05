@@ -3,106 +3,76 @@ description: Reference guide for accessing Wooldridge textbook content
 alwaysApply: true
 ---
 
-# Wooldridge Reference Guide
+# Wooldridge Textbook References
 
-## Overview
+## File Structure
 
-This guide provides instructions for accessing Wooldridge's "Econometric Analysis of Cross Section and Panel Data" textbook content. The textbook is organized by chapter/section for semantic searchability.
+Textbook is in `docs/wooldridge/` as page-range files:
+- `pages_1-10.md`, `pages_11-20.md`, ..., `pages_731-741.md`
+- Each file is ~29KB (10 pages, ~7,500 tokens)
+- Total: 73 files covering 741 pages
+- Page markers `{123}---` preserved for citations
 
-## Textbook Location
+## At Analysis Start
 
-**Path**: `docs/wooldridge_panel/`
+**Load relevant page-range files into context based on the topic.**
 
-**Structure**:
-```
-docs/wooldridge_panel/
-├── _index.md                    # Master TOC with page mappings
-├── part1_foundations/           # Chapters 1-3
-├── part2_linear_iv/             # Chapters 4-8 (IV & GMM)
-├── part5_panel_data/            # Chapters 10-14 (PRIORITY)
-├── part6_treatment_effects/     # Chapters 18-21
-├── part4_nonlinear/             # Chapters 15-17
-├── front_matter/                # Contents, Preface
-└── other/                       # Uncategorized sections
-```
+Example: For fixed effects analysis, read:
+- `docs/wooldridge/pages_271-280.md` (Ch 10.4: Random effects)
+- `docs/wooldridge/pages_281-290.md` (Ch 10.5: Fixed effects)
+- `docs/wooldridge/pages_291-300.md` (Ch 10.5-10.6: FE policy analysis)
+- `docs/wooldridge/pages_301-310.md` (Ch 10.7: Hausman test)
 
-## Accessing Content
+## Comprehensive Chapter-to-Page Mapping
 
-### Finding Topics
+| Chapter | Topic | Pages | Files to Load |
+|---------|-------|-------|---------------|
+| Ch 1 | Introduction, Causality | 21-31 | pages_21-30.md, pages_31-40.md |
+| Ch 2 | Conditional Expectations | 31-52 | pages_31-40.md, pages_41-50.md, pages_51-60.md |
+| Ch 3 | Asymptotic Theory | 52-65 | pages_51-60.md, pages_61-70.md |
+| Ch 4 | OLS, Omitted Variables | 65-92 | pages_61-70.md to pages_91-100.md |
+| Ch 5 | Instrumental Variables | 98-130 | pages_91-100.md to pages_121-130.md |
+| Ch 6 | IV Testing & Extensions | 129-156 | pages_121-130.md to pages_151-160.md |
+| Ch 7 | Multivariate Systems, SUR | 156-196 | pages_151-160.md to pages_191-200.md |
+| Ch 8 | GMM | 196-222 | pages_191-200.md to pages_221-230.md |
+| Ch 9 | Simultaneous Equations | 222-259 | pages_221-230.md to pages_251-260.md |
+| **Ch 10** | **Panel Data (Core FE/RE)** | **259-310** | **pages_251-260.md to pages_301-310.md** (6 files) |
+| **Ch 11** | **Advanced Panel, Dynamic** | **310-350** | **pages_311-320.md to pages_341-350.md** (4 files) |
+| Ch 12 | M-Estimation | 352-396 | pages_351-360.md to pages_391-400.md |
+| Ch 13 | Maximum Likelihood | 396-432 | pages_391-400.md to pages_431-440.md |
+| Ch 14 | GMM & Nonlinear | 432-462 | pages_431-440.md to pages_461-470.md |
+| Ch 15 | Binary Response | 462-526 | pages_461-470.md to pages_521-530.md |
+| Ch 16 | Censored/Truncated | 526-551 | pages_521-530.md to pages_551-560.md |
+| Ch 17 | Sample Selection | 551-578 | pages_551-560.md to pages_571-580.md |
+| **Ch 18** | **Treatment Effects** | **578-621** | **pages_571-580.md to pages_621-630.md** (6 files) |
+| Ch 19 | Count Data | 621-696 | pages_621-630.md to pages_691-700.md |
+| Ch 20 | Duration Analysis | 696-726 | pages_691-700.md to pages_721-730.md |
 
-1. **Read the index**: `docs/wooldridge_panel/_index.md` contains the full TOC with page mappings
-2. **Search by filename**: Files are named by chapter and topic (e.g., `ch10_3_fixed_effects.md`)
-3. **Grep for keywords**: Use grep to find specific terms across all files
+## Topic Quick Reference
 
-### Page Citations
+| Topic | Primary Files |
+|-------|--------------|
+| Fixed Effects | pages_271-280.md, pages_281-290.md |
+| Random Effects | pages_271-280.md |
+| Hausman Test | pages_301-310.md |
+| Clustered SE | pages_181-190.md, pages_291-300.md |
+| First Differencing | pages_291-300.md |
+| 2SLS | pages_101-110.md |
+| Weak Instruments | pages_111-120.md |
+| Overidentification | pages_131-140.md |
+| Difference-in-Differences | pages_291-300.md (10.6.4) |
+| Propensity Score Matching | pages_601-610.md |
+| Probit/Logit | pages_471-480.md |
+| Sample Selection | pages_551-560.md to pages_571-580.md |
 
-Use the page index module for accurate citations:
+## Usage Pattern
 
-```python
-from src.corpus import get_wooldridge_citation, get_page_range
+1. Identify topic from user question
+2. Look up chapter range in table above
+3. Read ALL files for that chapter into context
+4. Use page markers `{123}---` for citations
 
-# Get citation for a methodology
-citation = get_wooldridge_citation("fixed_effects")
-# Returns: "Wooldridge, Chapter 10, pp. 291-310"
-
-# Get page range for a topic
-pages = get_page_range("clustered_se")
-# Returns: (274, 330)
-```
-
-Page markers are preserved in files as `{123}------------------------------------------------`.
-
-## Methodology-to-Chapter Mappings
-
-### Panel Data Methods (Priority #2)
-
-| Topic | Chapter | File Pattern | Pages |
-|-------|---------|--------------|-------|
-| Fixed Effects | 10 | `ch10_*_fixed_effects*.md` | 291-310 |
-| Random Effects | 10 | `ch10_*_random_effects*.md` | 276-290 |
-| Hausman Test | 10 | `ch10_*_hausman*.md` | 311-320 |
-| Clustered SE | 10 | `ch10_*_clustered*.md` | 274-330 |
-| Panel IV | 11 | `ch11_*_panel_iv*.md` | 331-350 |
-| Dynamic Panels | 11 | `ch11_*_dynamic*.md` | 351-380 |
-| Attrition | 14 | `ch14_*_attrition*.md` | 578-590 |
-
-### Treatment Effects (Priority #1)
-
-| Topic | Chapter | File Pattern | Pages |
-|-------|---------|--------------|-------|
-| ATE Framework | 18 | `ch18_*_ate*.md` | 600-620 |
-| Matching/Propensity | 18 | `ch18_*_matching*.md` | 614-635 |
-| ATE with IV | 18 | `ch18_*_iv*.md` | 621-640 |
-| Diff-in-Diff | 21 | `ch21_*_diff*.md` | varies |
-
-### Standard Errors and Inference
-
-| Topic | Chapter | File Pattern |
-|-------|---------|--------------|
-| HAC SE | 12 | `ch12_*_hac*.md` |
-| HC3 SE | 17 | `ch17_*_hc3*.md` |
-| Clustered SE | 23 | `ch23_*_clustered*.md` |
-
-## Triangulation with Hansen/Angrist
-
-When answering methodology questions, compare perspectives:
-
-1. **Wooldridge** (`docs/wooldridge_panel/`): Panel data expertise, context-appropriate methods
-2. **Angrist/MHE** (`docs/angrist_mhe/`): Identification focus, causal inference
-3. **Hansen** (`docs/hansen_practices/`): Modern code practices, robust SE defaults
-
-### Agreement Patterns
-
-| Topic | Agreement | Notes |
-|-------|-----------|-------|
-| Clustered SE for panels | High | All three agree |
-| Robust SE default | Medium | Hansen: always; Wooldridge: context-dependent |
-| First-stage F > 10 | High | All three agree |
-| Report diagnostics | High | All three agree |
-
-## Citation Format
-
-### In Agent Responses
+## Page Citation Format
 
 When referencing Wooldridge:
 
@@ -110,45 +80,16 @@ When referencing Wooldridge:
 **Wooldridge (Chapter 10, pp. 291-310)**: For fixed effects estimation...
 ```
 
-### With Page Markers
-
-Content files preserve page markers. When citing specific content:
+With specific page:
 
 ```
 Wooldridge (p. 295) states: "The within estimator..."
 ```
 
-## When to Reference Wooldridge
+## Triangulation
 
-### Always Reference When:
-- Panel data methods (Priority #2)
-- Standard error selection for panels
-- Attrition handling
-- Survey weights
-- Small-sample corrections
+Compare with:
+- **Angrist/MHE** (`docs/angrist/`): Identification focus, causal inference
+- **Hansen** (`docs/hansen_practices/`): Modern code practices, robust SE defaults
 
-### Consider Referencing When:
-- Treatment effects (panel perspective)
-- IV methods (panel IV)
-- User asks "what does Wooldridge say about X?"
-
-## Quick Lookup Examples
-
-**Find fixed effects content**:
-```bash
-grep -r "fixed effects" docs/wooldridge_panel/
-# Or read the chapter file directly
-cat docs/wooldridge_panel/part5_panel_data/ch10_3_fixed_effects*.md
-```
-
-**Find page citation**:
-```python
-from src.corpus import get_wooldridge_citation
-print(get_wooldridge_citation("fixed_effects"))
-```
-
-**Compare with Hansen**:
-```bash
-cat docs/hansen_practices/HANSEN_EVALUATION.md
-# Look for the relevant section
-```
+See `triangulation-guide.mdc` for synthesis framework.

@@ -1,7 +1,0 @@
-# Stratified Sampling
-
-> Pages: 598
-
-Nonrandom samples also come in the form of stratified samples, where different subsets of the population are sampled with different frequencies. For example, certain surveys are designed to learn primarily about a particular subset of the population, in which case that group is usually overrepresented in the sample. Stratification can be based on exogenous variables or endogenous variables (which are known once a model and assumptions have been specified), or some combination of these. As in the case of sample selection problems, it is important to know which is the case.
-
-As mentioned in Section 17.3, choice-based sampling occurs when the stratification is based entirely on a discrete response variable. Various methods have been proposed for estimating discrete response models from choice-based samples under different assumptions; most of these are variations of maximum likelihood. Manski and McFadden (1981) and Cosslett (1993) contain general treatments, with the latter being a very useful survey. For a class of discrete response models, Cosslett (1981) proposed an efficient estimator, and Imbens (1992) obtained a computationally simple method of moments estimator that also achieves the efficiency bound. Imbens and Lancaster (1996) allow for general response variables in a maximum likelihood setting. Here, we focus on a simple, albeit often inefficient, method for estimating models in the context of two kinds of stratified sampling.
