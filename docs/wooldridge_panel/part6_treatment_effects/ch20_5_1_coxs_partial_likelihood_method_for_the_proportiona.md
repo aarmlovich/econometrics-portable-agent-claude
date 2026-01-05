@@ -1,0 +1,5 @@
+# Cox's Partial Likelihood Method for the Proportional Hazard Model
+
+> Pages: 720
+
+Cox (1972) suggested a partial likelihood method for estimating the parameters *b* in a proportional hazard model without specifying the baseline hazard. The strength of Cox's approach is that the effects of the covariates can be estimated very generally, provided the hazard is of the form (20.16). However, Cox's method is intended to be applied to flow data as opposed to grouped data. If we apply Cox's methods to grouped data, we must confront the practically important issue of individuals with identical observed durations. In addition, with time-varying covariates, Cox's method evidently requires the covariates to be strictly exogenous. Estimation of the hazard function itself is more complicated than the methods for grouped data that we covered in Section 20.4. See Amemiya (1985, Chapter 11) and Lancaster (1990, Chapter 9) for treatments of Cox's partial likelihood estimator.

@@ -1,0 +1,154 @@
+# Consistency of the Poisson QMLE
+
+> Pages: 655-661
+
+Once we have specified a conditional mean function, we are interested in cases where, other than the conditional mean, the Poisson distribution can be arbitrarily misspecified (subject to regularity conditions). When yi given x<sup>i</sup> does not have a Poisson distribution, we call the estimator ^*b* that solves
+
+$$\max_{\boldsymbol{\beta} \in \mathcal{B}} \sum_{i=1}^{N} \ell_i(\boldsymbol{\beta}) \tag{19.6}$$
+
+the Poisson quasi–maximum likelihood estimator (QMLE). A careful discussion of the consistency of the Poisson QMLE requires introduction of the true value of the parameter, as in Chapters 12 and 13. That is, we assume that for some value *b*<sup>o</sup> in the parameter space B,
+
+$$E(y \mid \mathbf{x}) = m(\mathbf{x}, \boldsymbol{\beta}_{o}) \tag{19.7}$$
+
+To prove consistency of the Poisson QMLE under assumption (19.5), the key is to show that *b*<sup>o</sup> is the unique solution to
+
+$$\max_{\boldsymbol{\beta} \in \mathcal{B}} E[\ell_i(\boldsymbol{\beta})] \tag{19.8}$$
+
+{656}------------------------------------------------
+
+Then, under the regularity conditions listed in Theorem 12.2, it follows from this theorem that the solution to equation (19.6) is weakly consistent for  $\beta_0$ .
+
+Wooldridge (1997c) provides a simple proof that  $\beta_0$  is a solution to equation (19.8) when assumption (19.7) holds (see also Problem 19.1). It also follows from the general results on quasi-MLE in the **linear exponential family (LEF)** by Gourieroux, Monfort, and Trognon (1984a) (hereafter, GMT, 1984a). Uniqueness of  $\beta_0$  must be assumed separately, as it depends on the distribution of  $\mathbf{x}_i$ . That is, in addition to assumption (19.7), identification of  $\boldsymbol{\beta}_0$  requires some restrictions on the distribution of explanatory variables, and these depend on the nature of the regression function m. In the linear regression case, we require full rank of  $\mathbf{E}(\mathbf{x}_i'\mathbf{x}_i)$ . For Poisson QMLE with an exponential regression function  $\mathbf{exp}(\mathbf{x}\boldsymbol{\beta})$ , it can be shown that multiple solutions to equation (19.8) exist whenever there is perfect multicollinearity in  $\mathbf{x}_i$ , just as in the linear regression case. If we rule out perfect multicollinearity, we can usually conclude that  $\boldsymbol{\beta}_0$  is identified under assumption (19.7).
+
+It is important to remember that consistency of the Poisson QMLE does not require any additional assumptions concerning the distribution of  $y_i$  given  $\mathbf{x}_i$ . In particular,  $Var(y_i | \mathbf{x}_i)$  can be virtually anything (subject to regularity conditions needed to apply the results of Chapter 12).
+
+#### 19.2.3 Asymptotic Normality of the Poisson QMLE
+
+If the Poission QMLE is consistent for  $\beta_0$  without any assumptions beyond (19.7), why did we introduce assumptions (19.2) and (19.3)? It turns out that whether these assumptions hold determines which asymptotic variance matrix estimators and inference procedures are valid, as we now show.
+
+The asymptotic normality of the Poisson QMLE follows from Theorem 12.3. The result is
+
+$$\sqrt{N}(\hat{\boldsymbol{\beta}} - \boldsymbol{\beta}_{o}) \xrightarrow{d} \text{Normal}(0, \mathbf{A}_{o}^{-1}\mathbf{B}_{o}\mathbf{A}_{o}^{-1})$$
+ (19.9)
+
+where
+
+$$\mathbf{A}_{o} \equiv \mathrm{E}[-\mathbf{H}_{i}(\boldsymbol{\beta}_{o})] \tag{19.10}$$
+
+and
+
+$$\mathbf{B}_{o} \equiv \mathrm{E}[\mathbf{s}_{i}(\boldsymbol{\beta}_{o})\mathbf{s}_{i}(\boldsymbol{\beta}_{o})'] = \mathrm{Var}[\mathbf{s}_{i}(\boldsymbol{\beta}_{o})] \tag{19.11}$$
+
+where we define  $A_0$  in terms of minus the Hessian because the Poisson QMLE solves a maximization rather than a minimization problem. Taking the gradient of equation (19.4) and transposing gives the score for observation i as
+
+$$\mathbf{s}_{i}(\boldsymbol{\beta}) = \nabla_{\beta} m(\mathbf{x}_{i}, \boldsymbol{\beta})'[y_{i} - m(\mathbf{x}_{i}, \boldsymbol{\beta})]/m(\mathbf{x}_{i}, \boldsymbol{\beta})$$
+(19.12)
+
+{657}------------------------------------------------
+
+It is easily seen that, under assumption (19.7),  $\mathbf{s}_i(\boldsymbol{\beta}_0)$  has a zero mean conditional on  $\mathbf{x}_i$ . The Hessian is more complicated but, under assumption (19.7), it can be shown that
+
+$$-\mathbb{E}[\mathbf{H}_{i}(\boldsymbol{\beta}_{o}) \mid \mathbf{x}_{i}] = \nabla_{\beta} m(\mathbf{x}_{i}, \boldsymbol{\beta}_{o})' \nabla_{\beta} m(\mathbf{x}_{i}, \boldsymbol{\beta}_{o}) / m(\mathbf{x}_{i}, \boldsymbol{\beta}_{o})$$
+(19.13)
+
+Then  $A_0$  is the expected value of this expression (over the distribution of  $\mathbf{x}_i$ ). A fully robust asymptotic variance matrix estimator for  $\hat{\boldsymbol{\beta}}$  follows from equation (12.49):
+
+$$\left(\sum_{i=1}^{N} \hat{\mathbf{A}}_{i}\right)^{-1} \left(\sum_{i=1}^{N} \hat{\mathbf{s}}_{i} \hat{\mathbf{s}}_{i}'\right) \left(\sum_{i=1}^{N} \hat{\mathbf{A}}_{i}\right)^{-1} \tag{19.14}$$
+
+where  $\hat{\mathbf{s}}_i$  is obtained from equation (19.12) with  $\hat{\boldsymbol{\beta}}$  in place of  $\boldsymbol{\beta}$ , and  $\hat{\mathbf{A}}_i$  is the right-hand side of equation (19.13) with  $\hat{\boldsymbol{\beta}}$  in place of  $\boldsymbol{\beta}_o$ . This is the fully robust variance matrix estimator in the sense that it requires only assumption (19.7) and the regularity conditions from Chapter 12.
+
+The asymptotic variance of  $\beta$  simplifies under the GLM assumption (19.3). Maintaining assumption (19.3) (where  $\sigma_0^2$  now denotes the true value of  $\sigma^2$ ) and defining  $u_i \equiv y_i - m(\mathbf{x}_i, \boldsymbol{\beta}_0)$ , the law of iterated expectations implies that
+
+$$\begin{aligned} \mathbf{B}_{o} &= \mathrm{E}[u_{i}^{2} \nabla_{\beta} m_{i}(\boldsymbol{\beta}_{o})' \nabla_{\beta} m_{i}(\boldsymbol{\beta}_{o}) / \{m_{i}(\boldsymbol{\beta}_{o})\}^{2}] \\ &= \mathrm{E}[\mathrm{E}(u_{i}^{2} \mid \mathbf{x}_{i}) \nabla_{\beta} m_{i}(\boldsymbol{\beta}_{o})' \nabla_{\beta} m_{i}(\boldsymbol{\beta}_{o}) / \{m_{i}(\boldsymbol{\beta}_{o})\}^{2}] = \sigma_{o}^{2} \mathbf{A}_{o} \end{aligned}$$
+
+since  $E(u_i^2 | \mathbf{x}_i) = \sigma_o^2 m_i(\boldsymbol{\beta}_o)$  under assumptions (19.3) and (19.7). Therefore,  $\mathbf{A}_o^{-1} \mathbf{B}_o \mathbf{A}_o^{-1} = \sigma_o^2 \mathbf{A}_o^{-1}$ , so we only need to estimate  $\sigma_o^2$  in addition to obtaining  $\hat{\mathbf{A}}$ . A consistent estimator of  $\sigma_o^2$  is obtained from  $\sigma_o^2 = E[u_i^2/m_i(\boldsymbol{\beta}_o)]$ , which follows from assumption (19.3) and iterated expectations. The usual analogy principle argument gives the estimator
+
+$$\hat{\sigma}^2 = N^{-1} \sum_{i=1}^{N} \hat{u}_i^2 / \hat{m}_i = N^{-1} \sum_{i=1}^{N} (\hat{u}_i / \sqrt{\hat{m}_i})^2$$
+(19.15)
+
+The last representation shows that  $\hat{\sigma}^2$  is simply the average sum of squared weighted residuals, where the weights are the inverse of the estimated nominal standard deviations. (In the GLM literature, the weighted residuals  $\tilde{u}_i \equiv \hat{u}_i / \sqrt{\hat{m}_i}$  are sometimes called the **Pearson residuals**. In earlier chapters we also called them standardized residuals.) In the GLM literature, a degrees-of-freedom adjustment is usually made by replacing  $N^{-1}$  with  $(N-P)^{-1}$  in equation (19.15).
+
+Given  $\hat{\sigma}^2$  and  $\hat{\mathbf{A}}$ , it is straightforward to obtain an estimate of Avar( $\hat{\boldsymbol{\beta}}$ ) under assumption (19.3). In fact, we can write
+
+{658}------------------------------------------------
+
+$$\operatorname{Avar}(\hat{\boldsymbol{\beta}}) = \hat{\sigma}^2 \hat{\mathbf{A}}^{-1} / N = \hat{\sigma}^2 \left( \sum_{i=1}^N \nabla_{\beta} \hat{\boldsymbol{m}}_i' \nabla_{\beta} \hat{\boldsymbol{m}}_i / \hat{\boldsymbol{m}}_i \right)^{-1}$$
+(19.16)
+
+Note that the matrix is always positive definite when the inverse exists, so it produces well-defined standard errors (given, as usual, by the square roots of the diagonal elements). We call these the **GLM standard errors**.
+
+If the Poisson variance assumption (19.2) holds, things are even easier because  $\sigma^2$  is known to be unity; the estimated asymptotic variance of  $\hat{\beta}$  is given in equation (19.16) but with  $\hat{\sigma}^2 \equiv 1$ . The same estimator can be derived from the MLE theory in Chapter 13 as the inverse of the estimated information matrix (conditional on the  $\mathbf{x}_i$ ); see Section 13.5.2.
+
+Under assumption (19.3) in the case of overdispersion ( $\sigma^2 > 1$ ), standard errors of the  $\hat{\beta}_j$  obtained from equation (19.16) with  $\hat{\sigma}^2 = 1$  will systematically underestimate the asymptotic standard deviations, sometimes by a large factor. For example, if  $\sigma^2 = 2$ , the correct GLM standard errors are, in the limit, 41 percent larger than the incorrect, nominal Poisson standard errors. It is common to see very significant coefficients reported for Poisson regressions—a recent example is Model (1993)—but we must interpret the standard errors with caution when they are obtained under assumption (19.2). The GLM standard errors are easily obtained by multiplying the Poisson standard errors by  $\hat{\sigma} \equiv \sqrt{\hat{\sigma}^2}$ . The most robust standard errors are obtained from expression (19.14), as these are valid under *any* conditional variance assumption. In practice, it is a good idea to report the fully robust standard errors along with the GLM standard errors and  $\hat{\sigma}$ .
+
+If y given x has a Poisson distribution, it follows from the general efficiency of the conditional MLE—see Section 14.5.2—that the Poisson QMLE is fully efficient in the class of estimators that ignores information on the marginal distribution of x.
+
+A nice property of the Poisson QMLE is that it retains some efficiency for certain departures from the Poisson assumption. The efficiency results of GMT (1984a) can be applied here: if the GLM assumption (19.3) holds for some  $\sigma^2 > 0$ , the Poisson QMLE is efficient in the class of all QMLEs in the linear exponential family of distributions. In particular, the Poisson QMLE is more efficient than the nonlinear least squares estimator, as well as many other QMLEs in the LEF, some of which we cover in Sections 19.3 and 19.4.
+
+Wooldridge (1997c) gives an example of Poisson regression to an economic model of crime, where the response variable is number of arrests of a young man living in California during 1986. Wooldridge finds overdispersion:  $\hat{\sigma}$  is either 1.228 or 1.172, depending on the functional form for the conditional mean. The following example shows that underdispersion is possible.
+
+{659}------------------------------------------------
+
+Table 19.1 OLS and Poisson Estimates of a Fertility Equation
+
+<table><tbody><tr><th colspan="4">Dependent Variable: children</th></tr><tr><th>Independent<br/>Variable</th><th>Linear (OLS)</th><th>Exponential<br/>(Poisson QMLE)</th><th></th></tr><tr><td>educ</td><td>.0644<br/><br/>(.0063)</td><td>.0217<br/><br/>(.0025)</td><td></td></tr><tr><td>age</td><td>.272<br/>(.017)</td><td>.337<br/>(.009)</td><td></td></tr><tr><td>age2</td><td>.0019<br/><br/>(.0003)</td><td>.0041<br/><br/>(.0001)</td><td></td></tr><tr><td>evermarr</td><td>.682<br/>(.052)</td><td>.315<br/>(.021)</td><td></td></tr><tr><td>urban</td><td><br/>.228<br/>(.046)</td><td><br/>.086<br/>(.019)</td><td></td></tr><tr><td>electric</td><td>.262<br/><br/>(.076)</td><td>.121<br/><br/>(.034)</td><td></td></tr><tr><td>tv</td><td><br/>.250<br/>(.090)</td><td><br/>.145<br/>(.041)</td><td></td></tr><tr><td>constant</td><td><br/>3.394<br/>(.245)</td><td><br/>5.375<br/>(.141)</td><td></td></tr><tr><td>Log-likelihood value</td><td>—</td><td>6,497.060<br/></td><td></td></tr><tr><td>R-squared</td><td>.590</td><td>.598</td><td></td></tr><tr><td>s^</td><td>1.424</td><td>.867</td><td></td></tr></tbody></table>
+
+Example 19.1 (Effects of Education on Fertility): We use the data in FERTIL2. RAW to estimate the effects of education on women's fertility in Botswana. The response variable, children, is number of living children. We use a standard exponential regression function, and the explanatory variables are years of schooling (educ), a quadratic in age, and binary indicators for ever married, living in an urban area, having electricity, and owning a television. The results are given in Table 19.1. A linear regression model is also included, with the usual OLS standard errors. For Poisson regression, the standard errors are the GLM standard errors. A total of 4,358 observations are used.
+
+As expected, the signs of the coefficients agree in the linear and exponential models, but their interpretations differ. For Poisson regression, the coefficient on educ implies that another year of education reduces expected number of children by about 2.2 percent, and the effect is very statistically significant. The linear model estimate implies that another year of education reduces expected number of children by about .064. (So, if 100 women get another year of education, we estimate they will have about six fewer children.)
+
+{660}------------------------------------------------
+
+The estimate of  $\sigma$  in the Poisson regression implies underdispersion: the variance is less than the mean. (Incidentally, the  $\hat{\sigma}$ 's for the linear and Poisson models are not comparable.) One implication is that the GLM standard errors are actually less than the corresponding Poisson MLE standard errors.
+
+For the linear model, the *R*-squared is the usual one. For the exponential model, the *R*-squared is computed as the squared correlation coefficient between *children*<sub>i</sub> and *children*<sub>i</sub> =  $\exp(\mathbf{x}_i\hat{\boldsymbol{\beta}})$ . The exponential regression function fits slightly better.
+
+#### 19.2.4 Hypothesis Testing
+
+Classical hypothesis testing is fairly straightforward in a QMLE setting. Testing hypotheses about individual parameters is easily carried out using asymptotic *t* statistics after computing the appropriate standard error, as we discussed in Section 19.2.3. Multiple hypotheses tests can be carried out using the Wald, quasi–likelihood ratio, or score test. We covered these generally in Sections 12.6 and 13.6, and they apply immediately to the Poisson QMLE.
+
+The Wald statistic for testing nonlinear hypotheses is computed as in equation (12.63), where  $\hat{\mathbf{V}}$  is chosen appropriately depending on the degree of robustness desired, with expression (19.14) being the most robust. The Wald statistic is convenient for testing multiple exclusion restrictions in a robust fashion.
+
+When the GLM assumption (19.3) holds, the quasi-likelihood ratio statistic can be used. Let  $\tilde{\beta}$  be the restricted estimator, where Q restrictions of the form  $\mathbf{c}(\tilde{\beta}) = \mathbf{0}$  have been imposed. Let  $\hat{\beta}$  be the unrestricted QMLE. Let  $\mathcal{L}(\beta)$  be the quasi-log likelihood for the sample of size N, given in expression (19.6). Let  $\hat{\sigma}^2$  be given in equation (19.15) (with or without the degrees-of-freedom adjustment), where the  $\hat{u}_i$  are the residuals from the unconstrained maximization. The QLR statistic,
+
+$$QLR = 2[\mathcal{L}(\hat{\boldsymbol{\beta}}) - \mathcal{L}(\check{\boldsymbol{\beta}})]/\hat{\boldsymbol{\sigma}}^2$$
+(19.17)
+
+converges in distribution to  $\chi_Q^2$  under  $H_0$ , under the conditions laid out in Section 12.6.3. The division of the usual likelihood ratio statistic by  $\hat{\sigma}^2$  provides for some degree of robustness. If we set  $\hat{\sigma}^2 = 1$ , we obtain the usual LR statistic, which is valid only under assumption (19.2). There is no usable quasi-LR statistic when the GLM assumption (19.3) does not hold.
+
+The score test can also be used to test multiple hypotheses. In this case we estimate only the restricted model. Partition  $\beta$  as  $(\alpha', \gamma')'$ , where  $\alpha$  is  $P_1 \times 1$  and  $\gamma$  is  $P_2 \times 1$ , and assume that the null hypothesis is
+
+$$H_0: \gamma_0 = \overline{\gamma} \tag{19.18}$$
+
+where  $\bar{\gamma}$  is a  $P_2 \times 1$  vector of specified constants (often,  $\bar{\gamma} = 0$ ). Let  $\check{\beta}$  be the estimator of  $\beta$  obtained under the restriction  $\gamma = \bar{\gamma}$  [so  $\check{\beta} \equiv (\check{\alpha}', \bar{\gamma}')'$ ], and define quantities under
+
+
+{661}------------------------------------------------
+
+the restricted estimation as  $\check{m}_i \equiv m(\mathbf{x}_i, \check{\boldsymbol{\beta}})$ ,  $\check{u}_i \equiv y_i - \check{m}_i$ , and  $\nabla_{\beta} \check{m}_i \equiv (\nabla_{\alpha} \check{m}_i, \nabla_{\gamma} \check{m}_i) \equiv \nabla_{\beta} m(\mathbf{x}_i, \check{\boldsymbol{\beta}})$ . Now weight the residuals and gradient by the inverse of nominal Poisson standard deviation, estimated under the null,  $1/\sqrt{\check{m}_i}$ :
+
+$$\tilde{u}_i \equiv \check{u}_i / \sqrt{\check{m}_i}, \qquad \nabla_{\beta} \tilde{m}_i \equiv \nabla_{\beta} \check{m}_i / \sqrt{\check{m}_i}$$
+
+$$\tag{19.19}$$
+
+so that the  $\tilde{u}_i$  here are the Pearson residuals obtained under the null. A form of the score statistic that is valid under the GLM assumption (19.3) [and therefore under assumption (19.2)] is  $NR_u^2$  from the regression
+
+$$\tilde{u}_i \text{ on } \nabla_{\!\beta} \tilde{m}_i, \qquad i = 1, 2, \dots, N$$
+ (19.20)
+
+where  $R_u^2$  denotes the uncentered *R*-squared. Under H<sub>0</sub> and assumption (19.3),  $NR_u^2 \stackrel{a}{\sim} \chi_{P_2}^2$ . This is identical to the score statistic in equation (12.68) but where we use  $\tilde{\mathbf{B}} = \tilde{\sigma}^2 \tilde{\mathbf{A}}$ , where the notation is self-explanatory. For more, see Wooldridge (1991a, 1997c).
+
+Following our development for nonlinear regression in Section 12.6.2, it is easy to obtain a test that is completely robust to variance misspecification. Let  $\tilde{\mathbf{r}}_i$  denote the  $1 \times P_2$  residuals from the regression
+
+$$\nabla_{\gamma}\tilde{\boldsymbol{m}}_{i} \text{ on } \nabla_{\alpha}\tilde{\boldsymbol{m}}_{i}$$
+ (19.21)
+
+In other words, regress each element of the weighted gradient with respect to the restricted parameters on the weighted gradient with respect to the unrestricted parameters. The residuals are put into the  $1 \times P_2$  vector  $\tilde{\mathbf{r}}_i$ . The robust score statistic is obtained as N-SSR from the regression
+
+1 on 
+$$\tilde{u}_i \tilde{\mathbf{r}}_i$$
+,  $i = 1, 2, \dots, N$  (19.22)
+
+where  $\tilde{u}_i\tilde{\mathbf{r}}_i = (\tilde{u}_i\tilde{r}_{i1}, \tilde{u}_i\tilde{r}_{i2}, \dots, \tilde{u}_i\tilde{r}_{iP_2})$  is a  $1 \times P_2$  vector.
+
+As an example, consider testing  $H_0$ :  $\gamma = 0$  in the exponential model  $E(y | \mathbf{x}) = \exp(\mathbf{x}\boldsymbol{\beta}) = \exp(\mathbf{x}_1\boldsymbol{a} + \mathbf{x}_2\gamma)$ . Then  $\nabla_{\beta}m(\mathbf{x},\boldsymbol{\beta}) = \exp(\mathbf{x}\boldsymbol{\beta})\mathbf{x}$ . Let  $\check{\boldsymbol{a}}$  be the Poisson QMLE obtained under  $\gamma = \mathbf{0}$ , and define  $\check{\boldsymbol{m}}_i \equiv \exp(\mathbf{x}_{i1}\check{\boldsymbol{a}})$ , with  $\check{\boldsymbol{u}}_i$  the residuals. Now  $\nabla_{\alpha}\check{\boldsymbol{m}}_i = \exp(\mathbf{x}_{i1}\check{\boldsymbol{a}})\mathbf{x}_{i1}$ ,  $\nabla_{\gamma}\check{\boldsymbol{m}}_i = \exp(\mathbf{x}_{i1}\check{\boldsymbol{a}})\mathbf{x}_{i2}$ , and  $\nabla_{\beta}\tilde{\boldsymbol{m}}_i = \check{\boldsymbol{m}}_i\mathbf{x}_i/\sqrt{\check{\boldsymbol{m}}_i} = \sqrt{\check{\boldsymbol{m}}_i}\mathbf{x}_i$ . Therefore, the test that is valid under the GLM variance assumption is  $NR_u^2$  from the OLS regression  $\check{\boldsymbol{u}}_i$  on  $\sqrt{\check{\boldsymbol{m}}_i}\mathbf{x}_i$ , where the  $\check{\boldsymbol{u}}_i$  are the weighted residuals. For the robust test, first obtain the  $1 \times P_2$  residuals  $\check{\boldsymbol{r}}_i$  from the regression  $\sqrt{\check{\boldsymbol{m}}_i}\mathbf{x}_{i2}$  on  $\sqrt{\check{\boldsymbol{m}}_i}\mathbf{x}_{i1}$ ; then obtain the statistic from regression (19.22).

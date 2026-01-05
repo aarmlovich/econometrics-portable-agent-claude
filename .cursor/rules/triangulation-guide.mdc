@@ -8,11 +8,19 @@ alwaysApply: true
 ## Overview
 
 This guide provides a systematic framework for comparing and synthesizing perspectives from three leading econometric traditions:
-- **Hansen**: Methodological rigor and modern best practices
+- **Hansen**: Modern best practices from public code (robust SE, diagnostics)
 - **Angrist/MHE**: Identification-focused approach and practical application
 - **Wooldridge**: Panel data expertise and context-appropriate methods
 
-Triangulation enables the agent to provide well-informed, validated recommendations by comparing all three perspectives.
+## Textbook Locations
+
+| Source | Path | Focus |
+|--------|------|-------|
+| Wooldridge | `docs/wooldridge_panel/` | Panel data, context-appropriate SE |
+| Angrist/MHE | `docs/angrist_mhe/` | Identification, causal inference |
+| Hansen | `docs/hansen_practices/` | Modern code practices |
+
+Each textbook has an `_index.md` with the table of contents and page mappings.
 
 ## Triangulation Framework
 
@@ -22,329 +30,158 @@ Triangulation enables the agent to provide well-informed, validated recommendati
 - All three perspectives agree on approach
 - High confidence in recommendation
 - Example: Clustering standard errors for panel data
-- **Agent Response**: "All three perspectives (Hansen, Angrist, Wooldridge) agree on..."
+- **Response**: "All three perspectives (Hansen, Angrist, Wooldridge) agree on..."
 
-**Medium Agreement (Two Agree, Third Validates)**
+**Medium Agreement (Two Agree)**
 - Two perspectives agree, third validates or doesn't contradict
 - Medium-high confidence
-- Example: Robust SE default (Hansen + Agent, Wooldridge validates context-specific use)
-- **Agent Response**: "Hansen and our approach use X, which Wooldridge validates for Y contexts..."
+- Example: Robust SE default (Hansen + modern practice, Wooldridge validates context-specific use)
+- **Response**: "Hansen and our approach use X, which Wooldridge validates for Y contexts..."
 
 **Low Agreement (Perspectives Differ)**
 - Perspectives differ in approach or emphasis
 - Requires synthesis and explanation
-- Example: SE defaults (Hansen: robust, Wooldridge: context-dependent, Angrist: historical)
-- **Agent Response**: "Perspectives differ: Hansen recommends X, Wooldridge uses Y for Z contexts, Angrist uses W. Our synthesis..."
+- Example: SE defaults (Hansen: robust, Wooldridge: context-dependent)
+- **Response**: "Perspectives differ: Hansen recommends X, Wooldridge uses Y for Z contexts. Our synthesis..."
 
-### When to Use Triangulation
+### When to Triangulate
 
 **Always Triangulate When:**
 1. User asks about methodology best practices
 2. Multiple valid approaches exist
 3. Need to explain why we use a particular method
-4. Providing comprehensive guidance on a topic
-5. Perspectives might conflict
-
-**Consider Triangulation When:**
-1. User asks "what does [econometrician] say about X?"
-2. Need to validate our approach
-3. Explaining methodological choices
-4. Comparing different methods
+4. Perspectives might conflict
 
 **Don't Triangulate When:**
 1. Simple technical questions (e.g., "how do I run OLS?")
 2. Code syntax questions
-3. Data loading questions
-4. Topics outside all three's expertise
+3. Topics outside all three's expertise
 
-## Perspective Selection
+## How to Look Up Each Source
 
-### When to Emphasize Each Perspective
+### Wooldridge Lookup
 
-**Emphasize Hansen When:**
-- Discussing modern best practices
-- Robust standard errors (default)
-- Explicit diagnostic requirements
-- Theoretical rigor needed
-- Comprehensive methodological foundation
+1. Read the index: `docs/wooldridge_panel/_index.md`
+2. Find the relevant chapter file by topic
+3. Search for specific terms with grep
+4. Use page markers `{123}---` for citations
 
-**Emphasize Angrist/MHE When:**
-- Identification strategy questions
-- Treatment effects methods (DiD, RD, Matching, IV)
-- Practical application focus
-- Credible identification needed
-- Methods serving identification
+```bash
+# Find fixed effects content
+grep -r "fixed effects" docs/wooldridge_panel/
+```
 
-**Emphasize Wooldridge When:**
-- Panel data methods (Priority #2)
-- Context-appropriate standard errors
-- Small-sample corrections
-- Attrition and survey weights
-- Understanding mechanics (within transformation)
-- Bridge between theory and application
+### Angrist/MHE Lookup
 
-### Synthesis Strategy
+1. Read the index: `docs/angrist_mhe/_index.md`
+2. Key chapters:
+   - ch03: Regression & CEF
+   - ch04: Instrumental Variables
+   - ch05: Difference-in-Differences
+   - ch06: Regression Discontinuity
 
-**When All Three Agree:**
-- High confidence recommendation
-- Cite all three as validation
-- Example: "All three perspectives agree on clustering for panel data..."
+```bash
+# Find IV content
+grep -r "instrumental" docs/angrist_mhe/
+```
 
-**When Two Agree:**
-- Medium-high confidence
-- Explain why we follow the two
-- Note third perspective's position
-- Example: "Hansen and Wooldridge both recommend X, which aligns with modern practice..."
+### Hansen Lookup
 
-**When Perspectives Differ:**
-- Explain the differences
-- Provide synthesis rationale
-- Show how our approach combines insights
-- Example: "Hansen uses robust SE by default (modern practice), while Wooldridge uses context-specific SE. We synthesize by using robust default with context-specific options..."
+1. Read practices: `docs/hansen_practices/HANSEN_EVALUATION.md`
+2. Quick reference: `docs/hansen_practices/_index.md`
+3. Key practices: robust SE default, clustering, IV diagnostics
 
 ## Synthesis Guidelines
 
 ### Standard Error Selection
 
-**Triangulation Pattern:**
-1. **Hansen**: Robust (HC1) by default (modern practice)
-2. **Wooldridge**: Context-appropriate (HC3 for LDV, clustered for panels, HAC for time series)
-3. **Angrist/MHE**: Context-dependent (clustered when relevant)
-
-**Our Synthesis:**
-- Default: Robust (HC1) - from Hansen (modern practice)
-- Context options: HC3 for LDV (Wooldridge), clustered for panels (all three), HAC for time series (Wooldridge)
-- **Agent Response**: "We use robust SE (HC1) as default (Hansen's modern practice), with context-specific options: HC3 for limited dependent variables (Wooldridge), clustered for panel data (all three agree), and HAC for time series (Wooldridge)."
+| Context | Hansen | Wooldridge | Angrist | Synthesis |
+|---------|--------|------------|---------|-----------|
+| Default | HC1 (robust) | Context-dependent | Context-dependent | HC1 default |
+| Panel data | Robust | Clustered + small-sample | Clustered | Clustered SE |
+| LDV | Robust | HC3 | - | HC3 for LDV |
+| Time series | - | HAC | - | HAC for autocorrelation |
 
 ### Panel Data Methods
 
-**Triangulation Pattern:**
-1. **Wooldridge**: Comprehensive panel methods, clustered SE with small-sample correction, understanding mechanics
-2. **Hansen**: Robust SE, explicit diagnostics, modern practices
-3. **Angrist/MHE**: Panel methods for treatment effects, identification focus
-
-**Our Synthesis:**
-- Use Wooldridge's panel expertise (clustered SE with small-sample correction)
-- Apply Hansen's diagnostic requirements
-- Focus on identification (Angrist) when doing treatment effects
-- **Agent Response**: "For panel data, we use Wooldridge's approach (clustered SE with small-sample correction), validated by Hansen's modern practices, and applied to identification problems (Angrist)."
+| Method | Wooldridge | Hansen | Angrist | Notes |
+|--------|------------|--------|---------|-------|
+| Fixed effects | Ch 10, detailed | Validates | Uses for identification | High agreement |
+| Clustered SE | Small-sample correction | Robust default | Moulton correction | High agreement |
+| Hausman test | Ch 10 | - | - | Wooldridge authoritative |
 
 ### Treatment Effects Methods
 
-**Triangulation Pattern:**
-1. **Angrist/MHE**: Identification strategies (DiD, RD, Matching, IV), practical application
-2. **Hansen**: Rigorous methods, explicit diagnostics, proper inference
-3. **Wooldridge**: Panel treatment effects, context-appropriate methods
-
-**Our Synthesis:**
-- Use Angrist's identification focus
-- Apply Hansen's rigorous methods and diagnostics
-- Leverage Wooldridge's panel expertise for panel treatment effects
-- **Agent Response**: "For treatment effects, we use Angrist's identification strategies (DiD, RD, Matching, IV) with Hansen's rigorous methods and diagnostics, and Wooldridge's panel expertise for panel treatment effects."
+| Method | Angrist | Hansen | Wooldridge | Notes |
+|--------|---------|--------|------------|-------|
+| DiD | Ch 5, primary | Validates | Ch 21 | Angrist primary |
+| RD | Ch 6, primary | Validates | - | Angrist primary |
+| Matching | Ch 3.3 | - | Ch 18 | Both useful |
+| IV | Ch 4, primary | Explicit diagnostics | Panel IV | Angrist + Hansen |
 
 ### IV Diagnostics
 
-**Triangulation Pattern:**
-1. **Hansen**: Explicit diagnostics (first-stage F, overid tests, R²)
-2. **Angrist/MHE**: Not always shown in code (identification focus)
-3. **Wooldridge**: Not shown in examples (pedagogical focus)
+| Diagnostic | Hansen | Angrist | Wooldridge | Requirement |
+|------------|--------|---------|------------|-------------|
+| First-stage F | Required (F>10) | Mentioned | Chapter 5 | Always report |
+| First-stage R2 | Required | - | - | Always report |
+| Overid tests | Required | Chapter 4.2 | Chapter 5 | When overidentified |
 
-**Our Synthesis:**
-- Use Hansen's explicit diagnostic requirements (production code)
-- Apply to identification problems (Angrist)
-- **Agent Response**: "We require explicit IV diagnostics (Hansen's practice) for production code, applied to identification problems (Angrist)."
+## Response Templates
 
-## Reference Patterns
+### Template 1: High Agreement (All Three Align)
 
-### Citing Each Tradition
-
-**Hansen Citations:**
-- Format: "Hansen (modern practice) recommends..."
-- Context: Methodological rigor, robust SE, explicit diagnostics
-- Evaluation: HANSEN_EVALUATION.md
-
-**Angrist/MHE Citations:**
-- Format: "Angrist/MHE (identification focus) emphasizes..."
-- Context: Identification strategy, treatment effects, practical application
-- Evaluation: ANGRIST_EVALUATION.md
-
-**Wooldridge Citations:**
-- Format: "Wooldridge (Chapter X) recommends..." or "Wooldridge (panel expertise) uses..."
-- Context: Panel data, context-appropriate methods, mechanics
-- Evaluation: WOOLDRIDGE_EVALUATION.md
-- Corpus: Query corpus for specific guidance
-
-### Triangulation Response Templates
-
-**Template 1: All Three Agree**
 ```
-All three perspectives (Hansen, Angrist/MHE, Wooldridge) agree on [approach].
+All three perspectives agree on [approach]:
 
-- **Hansen**: [Hansen's position]
-- **Angrist/MHE**: [Angrist's position]
-- **Wooldridge**: [Wooldridge's position]
+- **Hansen** (practices): [Hansen's position]
+- **Angrist/MHE** (Ch X): [Angrist's position]
+- **Wooldridge** (Ch Y, pp. Z): [Wooldridge's position]
 
-**Our approach**: We follow this consensus, which provides high confidence in our methodology.
+**Our approach**: We follow this consensus with high confidence.
 ```
 
-**Template 2: Two Agree**
+### Template 2: Medium Agreement (Two Agree)
+
 ```
-[Hansen/Wooldridge] and [Angrist/Wooldridge] both recommend [approach], which aligns with [rationale].
+[Source 1] and [Source 2] both recommend [approach]:
 
-- **Hansen**: [Hansen's position]
-- **Angrist/MHE**: [Angrist's position]
-- **Wooldridge**: [Wooldridge's position]
+- **Hansen**: [position]
+- **Angrist/MHE**: [position]
+- **Wooldridge**: [position]
 
-**Our approach**: We follow [the two that agree], validated by [third perspective's position].
-```
-
-**Template 3: Perspectives Differ**
-```
-Perspectives differ on [topic], reflecting different emphases:
-
-- **Hansen**: [Hansen's position] - emphasizes [rationale]
-- **Angrist/MHE**: [Angrist's position] - emphasizes [rationale]
-- **Wooldridge**: [Wooldridge's position] - emphasizes [rationale]
-
-**Our synthesis**: We combine [elements from each] to [achieve goal]. Specifically, [our approach].
+**Our approach**: We follow [the two that agree], validated by [third]'s position.
 ```
 
-## Confidence Levels
+### Template 3: Perspectives Differ
 
-### High Confidence (All Three Agree)
-- **Indicators**: All three use same approach or validate same practice
-- **Examples**: Clustering for panel data, robustness checks, reproducibility
-- **Agent Response**: "High confidence - all three perspectives agree..."
+```
+Perspectives differ on [topic]:
 
-### Medium-High Confidence (Two Agree)
-- **Indicators**: Two agree, third validates or doesn't contradict
-- **Examples**: Robust SE default (Hansen + Agent, Wooldridge validates)
-- **Agent Response**: "Medium-high confidence - [two] agree, [third] validates..."
+- **Hansen**: [position] - emphasizes [rationale]
+- **Angrist/MHE**: [position] - emphasizes [rationale]
+- **Wooldridge**: [position] - emphasizes [rationale]
 
-### Medium Confidence (Synthesis Required)
-- **Indicators**: Perspectives differ but can be synthesized
-- **Examples**: SE defaults (synthesize robust default with context options)
-- **Agent Response**: "Medium confidence - perspectives differ, but we synthesize..."
-
-### Lower Confidence (Conflicting Views)
-- **Indicators**: Perspectives conflict significantly
-- **Examples**: Rare - most topics have synthesis
-- **Agent Response**: "Perspectives differ - we use [synthesis] because [rationale]..."
-
-## Triangulation Queries
-
-### Using the Triangulation Module
-
-```python
-from src.corpus.triangulation import triangulate, compare_standard_errors
-
-# Full triangulation
-result = triangulate("fixed effects")
-
-# Result structure:
-# {
-#   "methodology": "fixed effects",
-#   "wooldridge": {...},  # From corpus
-#   "hansen": {...},      # From evaluation doc
-#   "angrist": {...},     # From evaluation doc
-#   "agreement_level": "high" | "medium" | "low",
-#   "synthesis": "Recommended approach combining all three"
-# }
-
-# Specific comparisons
-se_comparison = compare_standard_errors("panel_data")
-panel_comparison = compare_panel_methods()
+**Our synthesis**: We combine [elements] to achieve [goal]. Specifically, [approach].
 ```
 
-### Query Patterns
+## Key Synthesis Decisions
 
-**Pattern 1: Methodology Question**
-```python
-# User asks: "What's the best way to handle fixed effects?"
-result = triangulate("fixed effects")
-# Present all three perspectives + synthesis
-```
+### Standard Errors
+- **Default**: Robust (HC1) from Hansen
+- **Panel data**: Clustered with small-sample correction (all three agree)
+- **LDV**: HC3 (Wooldridge)
+- **Time series**: HAC (Wooldridge)
 
-**Pattern 2: Best Practice Question**
-```python
-# User asks: "Should I cluster standard errors?"
-comparison = compare_standard_errors("panel_data")
-# Show agreement/disagreement + recommendation
-```
+### IV Methods
+- **Identification strategy**: From Angrist
+- **Diagnostics**: From Hansen (always report first-stage F, R2)
+- **Panel IV**: From Wooldridge
 
-**Pattern 3: Implementation Question**
-```python
-# User asks: "How do I implement panel IV?"
-# Query Wooldridge for implementation details
-# Compare with Hansen's diagnostic requirements
-# Apply Angrist's identification focus
-```
-
-## Handling Conflicts
-
-### When Perspectives Conflict
-
-**Strategy 1: Context Matters**
-- Explain why perspectives differ (context-dependent)
-- Show when each is appropriate
-- Provide synthesis that accounts for context
-
-**Strategy 2: Modern Practice**
-- When perspectives differ, prefer modern practice (often Hansen)
-- Explain historical context (Angrist's examples may be older)
-- Note evolution of best practices
-
-**Strategy 3: Synthesis**
-- Combine insights from all three
-- Use each perspective's strength
-- Explain synthesis rationale
-
-### Example: Standard Error Defaults
-
-**Conflict**: 
-- Hansen: Robust (HC1) by default
-- Wooldridge: Context-dependent (homoskedastic for basics, HC3/clustered for advanced)
-- Angrist: Historical context (homoskedastic in older examples)
-
-**Resolution**:
-- Use robust default (Hansen - modern practice)
-- Support context-specific options (Wooldridge)
-- Acknowledge historical context (Angrist)
-- **Synthesis**: "We default to robust SE (modern practice), with context-specific options available (Wooldridge's approach)."
-
-## Integration with Agent Rules
-
-### Rule File Integration
-
-Rules should:
-- Reference triangulation when appropriate
-- Provide synthesis guidance
-- Include confidence levels
-- Link to evaluation documents
-
-### Agent Behavior
-
-The agent should:
-- Automatically triangulate for methodology questions
-- Present all three perspectives when relevant
-- Provide synthesis recommendations
-- Explain agreement/disagreement
-- Cite sources appropriately
-
-### Response Quality
-
-Good triangulation responses:
-- Show all three perspectives
-- Indicate agreement level
-- Provide clear synthesis
-- Explain rationale
-- Cite sources
-
-Poor triangulation responses:
-- Only show one perspective
-- Don't explain differences
-- Don't provide synthesis
-- Don't cite sources
+### Treatment Effects
+- **DiD/RD/Matching**: Angrist primary, Wooldridge for panel context
+- **Propensity scores**: Angrist Ch 3.3
+- **Panel treatment effects**: Wooldridge Ch 18, 21
 
 ## Examples
 
@@ -352,75 +189,33 @@ Poor triangulation responses:
 
 **User**: "Should I cluster standard errors in panel data?"
 
-**Triangulation**:
-```python
-result = triangulate("clustered standard errors")
-# Agreement: High (all three agree)
+**Response**:
 ```
+Yes, cluster standard errors in panel data. All three perspectives agree:
 
-**Agent Response**:
-```
-Yes, you should cluster standard errors in panel data. All three perspectives agree on this:
+- **Wooldridge (Ch 10, pp. 274-330)**: Recommends clustered SE with small-sample correction
+- **Hansen (practices)**: Validates clustering, uses `vce(robust)` with fixed effects
+- **Angrist/MHE (Ch 8)**: Uses clustered SE, discusses Moulton correction
 
-- **Wooldridge (Chapter 23)**: Recommends clustered SE with small-sample correction for panel data
-- **Hansen**: Validates clustering when appropriate, uses robust SE but supports clustering
-- **Angrist/MHE**: Uses clustered SE when relevant (Moulton correction)
-
-**Our approach**: We default to clustered SE with small-sample correction (Wooldridge's approach), validated by Hansen's modern practices.
-
-**Confidence**: High - all three perspectives agree.
-
-See WOOLDRIDGE_EVALUATION.md:144-162 for detailed comparison.
+**Our approach**: Clustered SE with small-sample correction (high confidence).
 ```
 
 ### Example 2: Standard Error Defaults
 
 **User**: "What standard errors should I use?"
 
-**Triangulation**:
-```python
-comparison = compare_standard_errors("cross_sectional")
-# Agreement: Medium (synthesis required)
+**Response**:
 ```
-
-**Agent Response**:
-```
-For cross-sectional data, we default to robust standard errors (HC1), which reflects modern best practices:
+For cross-sectional data, use robust (HC1) as default:
 
 - **Hansen**: Uses robust (HC1) by default (modern practice)
-- **Wooldridge**: Uses context-dependent SE (homoskedastic for basics, robust/clustered for advanced)
-- **Angrist/MHE**: Historical examples use homoskedastic, but modern practice uses robust/clustered
+- **Wooldridge**: Context-dependent (homoskedastic for basics, robust/clustered for advanced)
+- **Angrist**: Historical examples vary, modern practice uses robust
 
-**Our synthesis**: We use robust (HC1) as default (Hansen's modern practice), with context-specific options available (Wooldridge's approach). For limited dependent variables, we recommend HC3 (Wooldridge).
-
-**Confidence**: Medium-high - Hansen and our approach align with modern practice, Wooldridge validates context-specific use.
-
-See regression-core.mdc for detailed guidance on SE selection.
-```
-
-### Example 3: Treatment Effects
-
-**User**: "What's the best method for estimating treatment effects?"
-
-**Triangulation**:
-```python
-result = triangulate("treatment effects")
-# Agreement: High (all three cover treatment effects)
-```
-
-**Agent Response**:
-```
-The best method depends on your identification strategy. All three perspectives emphasize different aspects:
-
-- **Angrist/MHE**: Emphasizes identification strategy (DiD, RD, Matching, IV) - methods serve identification
-- **Hansen**: Provides rigorous methods with explicit diagnostics
-- **Wooldridge**: Covers treatment effects comprehensively (Chapter 21) and panel treatment effects (Chapter 28)
-
-**Our synthesis**: We use Angrist's identification-focused approach (choose method based on identification strategy) with Hansen's rigorous methods and diagnostics, and Wooldridge's panel expertise for panel treatment effects.
-
-**Confidence**: High - all three perspectives are complementary.
-
-See causal-inference.mdc for detailed guidance on each method.
+**Our synthesis**: Robust (HC1) default, with context-specific options:
+- HC3 for limited dependent variables (Wooldridge)
+- Clustered for panel data (all three)
+- HAC for time series (Wooldridge)
 ```
 
 ## Best Practices
@@ -428,19 +223,6 @@ See causal-inference.mdc for detailed guidance on each method.
 1. **Always show all three perspectives** when relevant
 2. **Indicate agreement level** (high/medium/low)
 3. **Provide synthesis** that combines insights
-4. **Explain rationale** for synthesis
-5. **Cite sources** appropriately
-6. **Link to evaluation documents** for detailed comparisons
-7. **Use corpus queries** for Wooldridge-specific guidance
-8. **Acknowledge differences** when perspectives conflict
-9. **Prefer modern practice** when perspectives differ
-10. **Context matters** - explain when each perspective is most relevant
-
-## Notes
-
-- Triangulation provides validation and confidence in recommendations
-- Agreement across all three provides highest confidence
-- Synthesis is key when perspectives differ
-- Always cite sources and link to evaluation documents
-- Use corpus for Wooldridge-specific queries
-- Modern practice (often Hansen) is preferred when perspectives differ
+4. **Cite sources** with chapter/page when available
+5. **Prefer modern practice** (Hansen) when perspectives differ
+6. **Context matters** - explain when each perspective is most relevant

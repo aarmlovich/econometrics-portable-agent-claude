@@ -1,0 +1,11 @@
+# Sample Selection and Attrition in Linear Panel Data Models
+
+> Pages: 585-586
+
+In our treatment of panel data models we have assumed that a balanced panel is available—each cross section unit has the same time periods available. Often, some time periods are missing for some units in the population of interest, and we are left with an unbalanced panel. Unbalanced panels can arise for several reasons. First, the survey design may simply rotate people or firms out of the sample based on prespecified rules. For example, if a survey of individuals begins at time t ¼ 1, at time t ¼ 2 some of the original people may be dropped and new people added. At t ¼ 3 some additional people might be dropped and others added; and so on. This is an example of a rotating panel.
+
+{586}------------------------------------------------
+
+Provided the decision to rotate units out of a panel is made randomly, unbalanced panels are fairly easy to deal with, as we will see shortly. A more complicated problem arises when attrition from a panel is due to units electing to drop out. If this decision is based on factors that are systematically related to the response variable, even after we condition on explanatory variables, a sample selection problem can result just as in the cross section case. Nevertheless, a panel data set provides us with the means to handle, in a simple fashion, attrition that is based on a time-constant, unobserved effect, provided we use first-differencing methods; we show this in Section 17.7.3.
+
+A different kind of sample selection problem occurs when people do not disappear from the panel but certain variables are unobserved for at least some time periods. This is the incidental truncation problem discussed in Section 17.4. A leading case is estimating a wage offer equation using a panel of individuals. Even if the population of interest is people who are employed in the initial year, some people will become unemployed in subsequent years. For those people we cannot observe a wage offer, just as in the cross-sectional case. This situation is different from the attrition problem where people leave the sample entirely and, usually, do not reappear in later years. In the incidental truncation case we observe some variables on everyone in each time period.

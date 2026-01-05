@@ -28,12 +28,12 @@ The Econometrics Agent provides a hybrid architecture supporting three usage mod
 - Diagnostic testing and visualization
 - Basic time series methods (for robustness checks)
 
-### Wooldridge Thought Integration
-- **Portable Wooldridge Textbook**: 73 page-range markdown files embedded in `docs/wooldridge_textbook/`
-- **Page-Level Citations**: All search results include Wooldridge page references
-- **Ask Wooldridge**: Natural language query interface for econometric guidance
-- **Specification Tests**: RESET test for functional form, VIF for multicollinearity
-- **Authoritative Thresholds**: All diagnostic thresholds cite Wooldridge (F < 10 for weak instruments, etc.)
+### Textbook Corpus (Triangulation)
+- **Wooldridge**: 200+ section-based markdown files in `docs/wooldridge_panel/` organized by chapter
+- **Angrist/MHE**: 50+ section-based markdown files in `docs/angrist_mhe/` for causal inference
+- **Hansen Practices**: Code practices in `docs/hansen_practices/` from public Stata/R code
+- **Page-Level Citations**: All content includes page markers for accurate citations
+- **Triangulation**: Compare perspectives across all three sources for methodology guidance
 
 ## Installation
 
@@ -231,108 +231,50 @@ Ask questions like:
 - "Run a fixed effects regression with clustered standard errors"
 - "Test for parallel trends in my panel data"
 
-## Wooldridge Corpus Integration
+## Textbook Corpus
 
-The agent integrates Wooldridge's "Econometric Analysis of Cross Section and Panel Data" (2nd ed.) textbook as a searchable, page-indexed corpus for authoritative econometric guidance.
+The agent integrates three econometric textbook sources for comprehensive methodology guidance:
+
+### Textbook Locations
+
+| Source | Path | Focus |
+|--------|------|-------|
+| Wooldridge | `docs/wooldridge_panel/` | Panel data, standard errors, IV |
+| Angrist/MHE | `docs/angrist_mhe/` | Causal inference, DiD, RD, IV |
+| Hansen | `docs/hansen_practices/` | Modern code practices |
 
 ### Key Features
 
-- **73 Page-Range Files**: Embedded in `docs/wooldridge_textbook/` for portability
-- **Page-Level Citations**: All search results include precise Wooldridge page references
-- **Ask Wooldridge**: Natural language query interface for econometric guidance
-- **No External Dependencies**: Fully self-contained with relative paths
+- **Section-Based Organization**: Files organized by chapter and section (e.g., `ch10_3_fixed_effects.md`)
+- **Page Markers**: Content includes page markers `{123}---` for precise citations
+- **Master Index**: Each textbook has `_index.md` with TOC and page-to-file mappings
+- **Triangulation**: Compare Hansen, Angrist, and Wooldridge perspectives
 
-### Using the Wooldridge Corpus
+### Using the Textbooks
 
-#### Ask Wooldridge for Guidance
+**Find content by topic:**
+```bash
+# Search for fixed effects content
+grep -r "fixed effects" docs/wooldridge_panel/
 
-```python
-from src.corpus import ask_wooldridge
-
-# Ask for methodological advice
-result = ask_wooldridge("When should I use fixed effects vs random effects?")
-print(result['answer'])  # Wooldridge's guidance
-print(result['citations'])  # Page references
+# Read the index to find relevant files
+cat docs/wooldridge_panel/_index.md
 ```
 
-#### Search with Page Citations
-
+**Get page citations:**
 ```python
-from src.corpus import search_wooldridge
+from src.corpus import get_wooldridge_citation, get_page_range
 
-# Search for topics with page references
-results = search_wooldridge("hausman test", top_k=3)
-for r in results:
-    print(f"{r['title']} ({r['citation']})")
-    print(r['content'][:300])
+# Get citation for a methodology
+citation = get_wooldridge_citation("fixed_effects")
+# Returns: "Wooldridge, Chapter 10, pp. 291-310"
 ```
-
-#### Get Methodology Recommendations
-
-```python
-from src.corpus import get_methodology_recommendation
-
-# Get Wooldridge guidance for a specific method
-rec = get_methodology_recommendation('iv',
-    diagnostics={'f_stat': 8.5, 'sargan_p': 0.02})
-
-# View warnings based on diagnostics
-print(rec['warnings'])  # Includes Wooldridge citations
-```
-
-#### Specification Testing
-
-```python
-from src.diagnostics import reset_test, variance_inflation_factors
-
-# Test functional form (Wooldridge, Ch. 6, p.124-125)
-reset = reset_test(y, X)
-print(reset['interpretation'])
-
-# Test multicollinearity (Wooldridge, Ch. 4)
-vif = variance_inflation_factors(X)
-print(f"Max VIF: {vif['max_vif']}")  # Threshold: 10
-```
-
-### Available Wooldridge Topics
-
-**Panel Data**: fixed_effects, random_effects, hausman_test, clustered_se, first_differencing
-
-**Instrumental Variables**: instrumental_variables, 2sls, weak_instruments, overidentification, endogeneity_test
-
-**Robust Inference**: robust_se, heteroskedasticity_robust, hc_variants
-
-**Treatment Effects**: matching, propensity_score, diff_in_diff, regression_discontinuity
-
-**Diagnostics**: reset_test (functional form), vif (multicollinearity)
 
 ### Portability Notes
 
-- **Relative Paths**: All corpus paths use `Path(__file__).parent` for portability
-- **Self-Contained**: No external API calls or downloads needed
-- **GitHub-Ready**: Clone and run - textbook is included in the repository
-```
-
-### Verifying Corpus Installation
-
-To verify the corpus is working correctly:
-
-```python
-from src.corpus import WooldridgeRetriever
-
-# Initialize retriever (loads corpus data)
-retriever = WooldridgeRetriever()
-
-# Test semantic search
-results = retriever.semantic_search("fixed effects panel data", top_k=3)
-print(f"Found {len(results)} results")
-
-# Test topic lookup
-topic_info = retriever.lookup_topic("panel_data")
-print(f"Topic info: {topic_info}")
-```
-
-See `docs/wooldridge_integration_guide.md` for detailed documentation.
+- **Self-Contained**: All textbook content embedded in `docs/` directory
+- **No External Dependencies**: No API calls or downloads needed
+- **GitHub-Ready**: Clone and run - all content included
 
 ## Project Structure
 
@@ -346,10 +288,10 @@ econometrics-agent/
 │   │   ├── regression/     # OLS and core regression
 │   │   ├── panel/          # Panel data methods
 │   │   └── causal/         # Causal inference methods
-│   ├── corpus/             # Wooldridge corpus tools
-│   │   ├── agent_integration.py  # Agent integration layer
-│   │   ├── triangulation.py     # Perspective triangulation
-│   │   └── validation.py        # Validation system
+│   ├── corpus/             # Simplified corpus tools
+│   │   ├── __init__.py     # Exports page citation utilities
+│   │   ├── wooldridge_page_index.py  # Page citations
+│   │   └── utils.py        # Path utilities
 │   ├── diagnostics/        # Diagnostic tests and plots
 │   ├── guidance/           # Methodology selection guidance
 │   ├── utils/              # Utility functions
@@ -361,6 +303,9 @@ econometrics-agent/
 │   ├── processed/
 │   └── outputs/
 ├── docs/
+│   ├── wooldridge_panel/   # Wooldridge textbook by section
+│   ├── angrist_mhe/        # Angrist/MHE by section
+│   ├── hansen_practices/   # Hansen code practices
 │   └── notebooks/          # Example notebooks
 ├── requirements.txt        # Core dependencies
 ├── requirements-dev.txt    # Development dependencies
@@ -405,12 +350,12 @@ econometrics-agent/
 - Panel-specific diagnostics
 - Clustered standard errors with small-sample correction
 
-### Wooldridge Corpus Integration
+### Textbook Corpus Integration
 
-- Semantic search of Wooldridge's textbook
-- Triangulation with Hansen and Angrist perspectives
-- Validation of rules and models against Wooldridge recommendations
-- Methodology coverage analysis
+- Section-based textbook files for semantic searchability
+- Triangulation across Wooldridge, Hansen, and Angrist perspectives
+- Page markers preserved for academic citations
+- Direct file access (no complex search infrastructure)
 
 ### Diagnostics and Visualization
 
@@ -621,9 +566,11 @@ mypy src/
 
 - See `.cursor/rules/` for detailed agent configuration and guidelines
 - Check `docs/notebooks/` for example analyses
-- **Wooldridge Corpus**: See `docs/wooldridge_integration_guide.md` for corpus usage
+- **Textbook Corpus**:
+  - Wooldridge: `docs/wooldridge_panel/_index.md`
+  - Angrist/MHE: `docs/angrist_mhe/_index.md`
+  - Hansen: `docs/hansen_practices/_index.md`
 - **Triangulation**: See `.cursor/rules/triangulation-guide.mdc` for perspective synthesis
-- API documentation (coming soon)
 
 ## Contributing
 

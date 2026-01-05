@@ -36,18 +36,18 @@ This prevents commands from blocking and ensures smooth interaction flow.
 - **Panel expertise (Wooldridge)**: Panel treatment effects methods and context-appropriate standard errors
 
 **Wooldridge References:**
-- **Chapter 21**: Estimating Average Treatment Effects (DiD, RD, Matching, IV for treatment effects)
-- **Chapter 28**: Estimation of Treatment Effects with Panel Data (panel treatment effects, two-way FE DiD)
-- **Corpus Query**: Use `from src.corpus.agent_integration import get_wooldridge_perspective; get_wooldridge_perspective("treatment effects")` to retrieve Wooldridge's detailed guidance
-- **Cross-Reference**: See WOOLDRIDGE_EVALUATION.md:1498-1509 for comparison with Hansen/Angrist on treatment effects
+- **Chapter 18**: Estimating Average Treatment Effects (DiD, RD, Matching, IV for treatment effects)
+- **Chapter 21**: Diff-in-Diff and Panel Treatment Effects (panel treatment effects, two-way FE DiD)
+- **Textbook Path**: `docs/wooldridge_panel/part6_treatment_effects/`
+- **Index**: `docs/wooldridge_panel/_index.md` for chapter-to-file mappings
 
 ## Difference-in-Differences (DiD)
 
-**Wooldridge Reference: Chapter 21 (Treatment Effects) and Chapter 28 (Panel Treatment Effects)**
+**Wooldridge Reference: Chapter 18 (Treatment Effects) and Chapter 21 (Panel Treatment Effects)**
 
 Wooldridge covers DiD comprehensively, emphasizing panel treatment effects and two-way fixed effects specifications. Our approach synthesizes Wooldridge's panel expertise with Angrist's identification focus and Hansen's rigorous methods.
 
-**Corpus Query**: `get_wooldridge_perspective("difference-in-differences")` or `semantic_search_wooldridge("difference in differences panel data")` for Wooldridge's guidance.
+**Textbook Reference**: `docs/wooldridge_panel/part6_treatment_effects/` and `docs/angrist_mhe/part2_core/ch05_*.md`
 
 ### Requirements
 1. **Balance tests** - Compare treated/control groups pre-treatment
@@ -379,11 +379,13 @@ Wooldridge covers DiD comprehensively, emphasizing panel treatment effects and t
 
 ## Instrumental Variables (IV)
 
-**Wooldridge Reference: Chapter 4-5 (IV Estimation) and Chapter 24 (Panel IV)**
+**Wooldridge Reference: Chapters 4-5 (IV Estimation) and Chapter 11 (Panel IV)**
 
 Wooldridge covers IV estimation comprehensively, including panel IV methods. Our approach synthesizes Wooldridge's IV expertise (especially panel IV) with Hansen's explicit diagnostic requirements and Angrist's identification focus.
 
-**Corpus Query**: `get_wooldridge_perspective("instrumental variables")` for Wooldridge's IV guidance, or `get_wooldridge_perspective("panel iv")` for panel-specific IV methods.
+**Textbook References**:
+- Wooldridge: `docs/wooldridge_panel/part2_linear_iv/` and `docs/wooldridge_panel/part5_panel_data/ch11_*.md`
+- Angrist/MHE: `docs/angrist_mhe/part2_core/ch04_*.md` (primary IV reference)
 
 ### Requirements
 1. **First-stage diagnostics** - Always report:
@@ -504,13 +506,13 @@ Wooldridge covers IV estimation comprehensively, including panel IV methods. Our
 
 ## Panel Treatment Effects
 
-**Wooldridge Reference: Chapter 28 - Estimation of Treatment Effects with Panel Data**
+**Wooldridge Reference: Chapter 18-21 - Treatment Effects with Panel Data**
 
 Wooldridge provides comprehensive coverage of panel treatment effects methods, including two-way fixed effects DiD, panel IV for treatment effects, and matching with panel data. Our approach synthesizes Wooldridge's panel expertise with Angrist's identification focus.
 
-**Corpus Query**: `get_wooldridge_perspective("difference-in-differences")` or `semantic_search_wooldridge("panel treatment effects two-way fixed effects")` for Wooldridge's detailed guidance.
-
-**Cross-Reference**: See WOOLDRIDGE_EVALUATION.md:1504-1509 for panel treatment effects comparison.
+**Textbook References**:
+- Wooldridge: `docs/wooldridge_panel/part6_treatment_effects/`
+- Angrist/MHE: `docs/angrist_mhe/part2_core/ch05_*.md` (DiD), `docs/angrist_mhe/part3_extensions/ch06_*.md` (RD)
 
 ### DiD with Panel Data
 - **Two-way fixed effects DiD** is a panel treatment effects method

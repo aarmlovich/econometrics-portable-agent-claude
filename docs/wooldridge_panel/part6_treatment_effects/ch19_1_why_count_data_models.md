@@ -1,0 +1,19 @@
+# Why Count Data Models?
+
+> Pages: 652-653
+
+A count variable is a variable that takes on nonnegative integer values. Many variables that we would like to explain in terms of covariates come as counts. A few examples include the number of times someone is arrested during a given year, number of emergency room drug episodes during a given week, number of cigarettes smoked per day, and number of patents applied for by a firm during a year. These examples have two important characteristics in common: there is no natural a priori upper bound, and the outcome will be zero for at least some members of the population. Other count variables do have an upper bound. For example, for the number of children in a family who are high school graduates, the upper bound is number of children in the family.
+
+If y is the count variable and x is a vector of explanatory variables, we are often interested in the population regression, Eðy j xÞ. Throughout this book we have discussed various models for conditional expectations, and we have discussed different methods of estimation. The most straightforward approach is a linear model, Eðy j xÞ ¼ x*b*, estimated by OLS. For count data, linear models have shortcomings very similar to those for binary responses or corner solution responses: because yb 0, we know that Eðy j xÞ should be nonnegative for all x. If ^*b* is the OLS estimator, there usually will be values of x such that x^*b* < 0—so that the predicted value of y is negative.
+
+For strictly positive variables, we often use the natural log transformation, logðyÞ, and use a linear model. This approach is not possible in interesting count data applications, where y takes on the value zero for a nontrivial fraction of the population. Transformations could be applied that are defined for all yb0—for example, logð1 þ yÞ—but logð1 þ yÞ itself is nonnegative, and it is not obvious how to recover Eðy j xÞ from a linear model for E½logð1 þ yÞ j x. With count data, it is better to model Eðy j xÞ directly and to choose functional forms that ensure positivity for any value of x and any parameter values. When y has no upper bound, the most popular of these is the exponential function, Eðy j xÞ ¼ expðx*b*Þ.
+
+In Chapter 12 we discussed nonlinear least squares (NLS) as a general method for estimating nonlinear models of conditional means. NLS can certainly be applied to count data models, but it is not ideal: NLS is relatively inefficient unless Varðy j xÞ is constant (see Chapter 12), and all of the standard distributions for count data imply heteroskedasticity.
+
+In Section 19.2 we discuss the most popular model for count data, the Poisson regression model. As we will see, the Poisson regression model has some nice features. First, if y given x has a Poisson distribution—which used to be the maintained
+
+{653}------------------------------------------------
+
+assumption in count data contexts—then the conditional maximum likelihood estimators are fully efficient. Second, the Poisson assumption turns out to be unnecessary for consistent estimation of the conditional mean parameters. As we will see in Section 19.2, the Poisson quasi–maximum likelihood estimator is fully robust to distributional misspecification. It also maintains certain efficiency properties even when the distribution is not Poisson.
+
+In Section 19.3 we discuss other count data models, and in Section 19.4 we cover quasi-MLEs for other nonnegative response variables. In Section 19.5 we cover multiplicative panel data models, which are motivated by unobserved effects count data models but can also be used for other nonnegative responses.

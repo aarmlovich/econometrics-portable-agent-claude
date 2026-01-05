@@ -1,0 +1,7 @@
+# *A - Individual-level data*
+
+> Pages: 47
+
+#### **. regress earnings school, robust**
+
+<table><tbody><tr><th>Source |</th><th>SS</th><th>df</th><th>MS</th><th>Number of obs = 409435</th><th></th></tr><tr><td>+</td><td></td><td></td><td></td><td>F( 1,409433) =49118.25</td><td></td></tr><tr><td></td><td>Model | 22631.4793</td><td></td><td>1 22631.4793</td><td>Prob &gt; F</td><td>= 0.0000</td></tr><tr><td></td><td>Residual | 188648.31 409433 .460755019</td><td></td><td></td><td>R-squared</td><td>= 0.1071</td></tr><tr><td>+</td><td></td><td></td><td></td><td>Adj R-squared = 0.1071</td><td></td></tr><tr><td></td><td>Total | 211279.789 409434</td><td></td><td>.51602893</td><td>Root MSE</td><td>= .67879</td></tr><tr><td></td><td>|</td><td>Robust</td><td></td><td></td><td colspan="3">+<br/>Old Fashioned</td></tr><tr><td>earnings |</td><td>Coef.</td><td>Std. Err.</td><td>t</td><td>Std. Err.</td><td>t</td></tr><tr><td>school |</td><td>.0674387</td><td>.0003447</td><td>195.63</td><td>+<br/>.0003043</td><td>221.63</td></tr><tr><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>const. |</td><td>5.835761</td><td></td><td>.0045507 1282.39</td><td></td><td>.0040043 1457.38</td></tr></tbody></table>

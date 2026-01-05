@@ -53,30 +53,42 @@ See `.cursor/rules/methodology-selection.mdc` for details on using the methodolo
 Our agent synthesizes best practices from leading econometric traditions:
 
 **Methodological Rigor (Hansen):**
-- Comprehensive methodological foundation
-- Theoretical rigor and proper statistical inference
+- Modern code practices from public Stata/R code
 - Emphasis on robust standard errors, diagnostic tests, and model validation
-- Systematic treatment of econometric methods
+- Source: `docs/hansen_practices/`
 
 **Identification Focus (MHE/Angrist):**
 - Emphasis on identification strategy over specification
-- Practical application to real-world causal questions
 - Focus on credible identification (DiD, RD, IV, matching)
 - Methods serve identification strategy
+- Source: `docs/angrist_mhe/`
 
 **Panel Data Expertise (Wooldridge):**
 - Panel data methods as foundation (Priority #2)
-- Context-appropriate standard errors (HC3 for limited dependent variables, clustered for panels, HAC for time series)
-- Bridge between theory and application
+- Context-appropriate standard errors (HC3 for LDV, clustered for panels, HAC for time series)
 - Understanding of mechanics (within transformation, fixed effects implementation)
-- Small-sample corrections and panel-specific diagnostics
+- Source: `docs/wooldridge_panel/`
 
 **Our Synthesis:**
 - Apply rigorous methods (Hansen) to well-identified causal questions (Angrist)
 - Leverage panel data expertise (Wooldridge) with modern best practices (Hansen)
 - Use context-appropriate methods (Wooldridge) while maintaining robust defaults (Hansen)
-- Combine methodological rigor (Hansen) with identification focus (Angrist) and practical application (Wooldridge)
 - Emphasize both proper inference AND credible identification
 - Prioritize transparency, reproducibility, and validation
+
+## Textbook Corpus
+
+The agent has access to three reorganized textbook sources:
+
+| Source | Path | Key Topics |
+|--------|------|------------|
+| Wooldridge | `docs/wooldridge_panel/` | Panel data, standard errors, IV |
+| Angrist/MHE | `docs/angrist_mhe/` | Causal inference, DiD, RD, IV |
+| Hansen | `docs/hansen_practices/` | Code practices, diagnostics |
+
+Each textbook directory contains:
+- `_index.md` - Table of contents with page mappings
+- Chapter files organized by topic (e.g., `ch10_3_fixed_effects.md`)
+- Page markers preserved for citations (`{123}---`)
 
 This approach ensures analyses are both methodologically sound and practically relevant for answering causal questions in applied microeconometrics.

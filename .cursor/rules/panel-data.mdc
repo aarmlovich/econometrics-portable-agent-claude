@@ -22,11 +22,11 @@ globs:
 - **Causal focus (Angrist/MHE)**: Panel methods applied to treatment effects and identification problems
 
 **Wooldridge References:**
-- **Chapter 23**: Basic Linear Unobserved Effects Panel Data Models (fixed effects, random effects, within transformation)
-- **Chapter 24**: Linear Models with Endogenous Regressors (panel IV)
-- **Chapter 26**: Attrition and Other Selection Issues (attrition testing and handling)
-- **Corpus Query**: Use `from src.corpus.agent_integration import get_wooldridge_perspective; get_wooldridge_perspective("fixed effects")` to retrieve Wooldridge's detailed guidance
-- **Cross-Reference**: See WOOLDRIDGE_EVALUATION.md:144-162 for comparison with Hansen/Angrist on panel data clustering
+- **Chapter 10**: Basic Panel Data Models (fixed effects, random effects, within transformation)
+- **Chapter 11**: Panel IV Estimation (panel IV, dynamic panels)
+- **Chapter 14**: Attrition and Other Selection Issues (attrition testing and handling)
+- **Textbook Path**: `docs/wooldridge_panel/part5_panel_data/`
+- **Index**: `docs/wooldridge_panel/_index.md` for chapter-to-file mappings
 
 ## Fixed Effects Models
 
@@ -49,8 +49,7 @@ globs:
      - The correction adjusts the variance-covariance matrix to account for finite sample bias in clustered standard errors
      - When clusters are few relative to observations, uncorrected clustered SE can be biased downward
      - Small-sample correction provides more conservative (larger) standard errors, improving inference in finite samples
-   - **Corpus Query**: `get_wooldridge_perspective("clustered standard errors")` for detailed guidance
-   - **Cross-Reference**: WOOLDRIDGE_EVALUATION.md:144-162
+   - **Textbook Reference**: `docs/wooldridge_panel/part5_panel_data/` for clustered SE guidance
 
 3. **Entity (unit) fixed effects** - Include when:
    - Unobserved time-invariant heterogeneity is concern
@@ -71,11 +70,11 @@ globs:
 - Report R-squared: within, between, overall
 - Report number of groups and time periods
 
-**Wooldridge's Diagnostic Approach (Chapter 23):**
+**Wooldridge's Diagnostic Approach (Chapter 10):**
 - Emphasizes understanding of within transformation mechanics
 - Shows both manual within transformation and automatic FE estimation
 - Demonstrates importance of proper clustering and small-sample corrections
-- **Corpus Query**: `semantic_search_wooldridge("panel data diagnostics serial correlation")` for Wooldridge's diagnostic guidance
+- **Textbook Reference**: `docs/wooldridge_panel/part5_panel_data/` for diagnostic guidance
 
 ### Example Specification
 ```python
@@ -274,13 +273,11 @@ results = model.fit(cov_type='clustered', cluster_entity=True)
 
 ## Attrition in Panel Data
 
-**Wooldridge Reference: Chapter 26 - Attrition and Other Selection Issues**
+**Wooldridge Reference: Chapter 14 - Attrition and Other Selection Issues**
 
 Wooldridge provides comprehensive guidance on testing and correcting for attrition bias in panel data. This section synthesizes Wooldridge's approach with our implementation requirements.
 
-**Corpus Query**: Use `get_wooldridge_perspective("attrition")` to retrieve Wooldridge's detailed guidance on attrition testing and correction methods.
-
-**Cross-Reference**: See WOOLDRIDGE_EVALUATION.md:1472-1496 for detailed methodology extraction from Chapter 26.
+**Textbook Reference**: `docs/wooldridge_panel/part5_panel_data/ch14_*_attrition*.md` for attrition guidance.
 
 ### Testing for Attrition Bias
 1. **Selective attrition test**: Compare attritors vs. non-attritors on observables
